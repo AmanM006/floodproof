@@ -1,0 +1,13 @@
+evaluation_set,model,flood_iou,precision,recall,f1,pixel_accuracy,latency_ms_per_chip
+Test Event (India Monsoon),XGBoost SAR Classifier,0.6605,0.7979,0.7932,0.7955,0.919,161.79
+Test Event (India Monsoon),Fixed SAR Threshold,0.5458,0.9092,0.5773,0.7062,0.9046,1.2
+Test Event (India Monsoon),Adaptive Otsu Threshold,0.3682,0.4052,0.8011,0.5382,0.7269,4.5
+Test Event (India Monsoon),Compact U-Net (PyTorch),0.0611,0.893,0.0616,0.1152,0.8121,142.87
+Test Event (Paraguay),Fixed SAR Threshold,0.577,0.8129,0.6654,0.7318,0.9625,1.2
+Test Event (Paraguay),XGBoost SAR Classifier,0.3384,0.4249,0.6243,0.5057,0.9061,199.3
+Test Event (Paraguay),Adaptive Otsu Threshold,0.1782,0.1949,0.6749,0.3025,0.7606,4.5
+Test Event (Paraguay),Compact U-Net (PyTorch),0.0442,0.769,0.0448,0.0847,0.9255,144.56
+Validation (Sri Lanka),XGBoost SAR Classifier,0.4253,0.4789,0.7914,0.5967,0.9147,165.41
+Validation (Sri Lanka),Fixed SAR Threshold,0.2022,0.7019,0.2212,0.3363,0.9304,1.2
+Validation (Sri Lanka),Adaptive Otsu Threshold,0.185,0.1887,0.904,0.3123,0.6825,4.5
+Validation (Sri Lanka),Compact U-Net (PyTorch),0.0554,0.9667,0.0555,0.105,0.9245,139.6

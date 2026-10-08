@@ -1,0 +1,4 @@
+top_k_sectors,floodproof_coverage_ha,floodproof_capture_pct,area_only_capture_pct,random_dispatch_capture_pct
+5,183.67,14.8,14.8,6.5
+10,353.03,28.5,28.5,13.1
+15,516.78,41.7,42.0,21.3

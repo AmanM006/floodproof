@@ -1,0 +1,21 @@
+{
+  "dataset": "Sen1Floods11 v1.1 HandLabeled",
+  "task": "Sentinel-1 SAR Surface Water and Flood Delineation",
+  "input_channels": ["VV (dB)", "VH (dB)", "VV-VH Difference", "Normalized Polarization Ratio"],
+  "classes": {
+    "-1": "Invalid / No-data (Masked out from loss and metric calculation)",
+    "0": "Non-water / Dry land",
+    "1": "Water / Flooded area"
+  },
+  "geographic_splits": {
+    "train_events": ["Ghana", "Pakistan", "Somalia", "Nigeria", "Spain"],
+    "val_event": ["Sri-Lanka"],
+    "test_events": {
+      "india_monsoon_event": "India (2016-08-12 Flood Event, 18 chips)",
+      "unseen_paraguay_event": "Paraguay (12 chips)"
+    }
+  },
+  "random_seed": 42,
+  "chip_size": [512, 512],
+  "metrics": ["IoU (Flood/Water)", "Precision", "Recall", "F1", "Overall Pixel Accuracy"]
+}

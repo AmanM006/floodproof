@@ -1,0 +1,29 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Raw datasets and heavy rasters (never commit raw satellite datasets to Git)
+data/raw/
+*.tif
+*.tiff
+*.tar
+*.zip
+*.parquet
+
+# Large models & checkpoints
+artifacts/*.pt
+artifacts/*.pth
+artifacts/*.joblib
+
+# Secrets & AWS keys
+*.pem
+*.key
+.env
+aws_credentials.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
