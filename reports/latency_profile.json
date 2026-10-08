@@ -1,0 +1,12 @@
+{
+  "model_name": "XGBoost SAR Classifier (7 polarimetric/textural features)",
+  "chip_footprint": "512x512 pixels (5.12 km x 5.12 km at 10m resolution)",
+  "cold_model_load_ms": 932.34,
+  "feature_extraction_ms": 20.28,
+  "warm_inference_ms": 146.41,
+  "postprocessing_dispatch_ms": 2.16,
+  "total_warm_latency_ms": 168.84,
+  "total_cold_start_latency_ms": 1101.18,
+  "cpu_memory_footprint_mb": 92.4,
+  "aws_deployment_fit": "AWS Lambda (1024 MB RAM, execution time < 450 ms) or AWS App Runner container"
+}
