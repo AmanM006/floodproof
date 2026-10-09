@@ -22,6 +22,11 @@ artifacts/*.joblib
 .env
 aws_credentials.json
 
+# Web builds & node modules
+web/.next/
+web/node_modules/
+node_modules/
+
 # IDE / OS
 .vscode/
 .idea/

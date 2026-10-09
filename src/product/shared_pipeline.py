@@ -25,6 +25,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+from src.product.infrastructure import analyze_infrastructure_exposure
+from src.product.planner import compute_inspection_plan
+
 MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'artifacts', 'xgboost_sar_flood.joblib')
 
 def parse_geotiff_metadata(tif_path: str):
@@ -354,11 +357,51 @@ def run_pipeline(s1_tif_path: str, jrc_tif_path: str = None, scene_name: str = N
                 'triage_category': cat
             })
             
+    # 7. Infrastructure Exposure Analysis (OSM)
+    t_infra_start = time.time()
+    infra_results = analyze_infrastructure_exposure(
+        cand_water_mask=cand_water,
+        perm_water_mask=perm_water,
+        geo_meta=geo,
+        pixel_area_m2=pixel_area_m2
+    )
+    timings['infrastructure_ms'] = round((time.time() - t_infra_start) * 1000.0, 2)
+    
+    # Merge infrastructure stats into sectors
+    sec_infra_map = infra_results['sector_infrastructure']
+    for s in sectors:
+        sid = s['id']
+        s_inf = sec_infra_map.get(sid, {})
+        s['road_length_m'] = s_inf.get('road_length_m', 0.0)
+        s['road_overlap_m'] = s_inf.get('road_overlap_m', 0.0)
+        s['building_ha'] = s_inf.get('building_ha', 0.0)
+        s['building_overlap_ha'] = s_inf.get('building_overlap_ha', 0.0)
+        s['settlements'] = s_inf.get('settlements', [])
+        s['has_exposure'] = s_inf.get('has_exposure', False)
+
+    # 8. Inspection Planning (Explainable Multi-Criteria Prioritization)
+    t_plan_start = time.time()
+    inspection_plan = compute_inspection_plan(
+        sectors=sectors,
+        budget_k=10,
+        objective="balanced"
+    )
+    timings['planning_ms'] = round((time.time() - t_plan_start) * 1000.0, 2)
+    
+    # Keep standard candidate water sort for sectors, with plan_rank attached
+    plan_map = {ps['id']: ps for ps in inspection_plan['all_ranked_sectors']}
+    for s in sectors:
+        ps = plan_map.get(s['id'], {})
+        s['priority_score'] = ps.get('priority_score', 0.0)
+        s['plan_rank'] = ps.get('plan_rank', 99)
+        s['score_breakdown'] = ps.get('score_breakdown', {})
+        s['inspection_rationale'] = ps.get('inspection_rationale', '')
+
     sectors.sort(key=lambda s: s['candidate_water_ha'], reverse=True)
     for idx, s in enumerate(sectors):
         s['rank'] = idx + 1
         
-    # 7. Render True Transparent RGBA PNG Rasters
+    # 9. Render True Transparent RGBA PNG Rasters
     t_render_start = time.time()
     
     # SAR False color (RGB with solid alpha)
@@ -383,12 +426,18 @@ def run_pipeline(s1_tif_path: str, jrc_tif_path: str = None, scene_name: str = N
     dis_rgba = np.zeros((512, 512, 4), dtype=np.float32)
     dis_rgba[disagreement] = [0.85, 0.47, 0.02, 0.80]
     
+    # Infrastructure Rasters (Roads & Buildings)
+    roads_rgba = infra_results['roads_rgba']
+    bld_rgba = infra_results['buildings_rgba']
+    
     img_sar_b64 = rgba_to_b64(sar_rgba)
     img_cand_water_b64 = rgba_to_b64(cand_rgba)
     img_perm_water_b64 = rgba_to_b64(perm_rgba)
     img_disagreement_b64 = rgba_to_b64(dis_rgba)
-    timings['rendering_ms'] = round((time.time() - t_render_start) * 1000.0, 2)
+    img_roads_b64 = rgba_to_b64(roads_rgba)
+    img_buildings_b64 = rgba_to_b64(bld_rgba)
     
+    timings['rendering_ms'] = round((time.time() - t_render_start) * 1000.0, 2)
     timings['total_pipeline_ms'] = round((time.time() - t0) * 1000.0, 2)
     
     title = scene_name or f"SAR Scene ({geo['center_lat']}°N, {geo['center_lon']}°E)"
@@ -424,9 +473,17 @@ def run_pipeline(s1_tif_path: str, jrc_tif_path: str = None, scene_name: str = N
         'total_candidate_water_ha': total_cand_water_ha,
         'total_permanent_water_ha': total_perm_water_ha,
         'total_disagreement_ha': total_disagree_ha,
+        'infrastructure': {
+            'source': infra_results['source'],
+            'data_disclaimer': infra_results['data_disclaimer'],
+            'scene_summary': infra_results['scene_summary']
+        },
+        'inspection_plan': inspection_plan,
         'img_sar_b64': img_sar_b64,
         'img_cand_water_b64': img_cand_water_b64,
         'img_perm_water_b64': img_perm_water_b64,
         'img_disagreement_b64': img_disagreement_b64,
+        'img_roads_b64': img_roads_b64,
+        'img_buildings_b64': img_buildings_b64,
         'sectors': sectors
     }

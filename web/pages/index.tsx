@@ -27,7 +27,9 @@ import {
   ShieldCheck, 
   User, 
   FileText,
-  Move
+  Move,
+  Compass,
+  Navigation
 } from 'lucide-react';
 
 interface Sector {
@@ -41,6 +43,20 @@ interface Sector {
   disagreement_alert: string;
   triage_category: string;
   rank: number;
+  road_length_m?: number;
+  road_overlap_m?: number;
+  building_ha?: number;
+  building_overlap_ha?: number;
+  settlements?: string[];
+  has_exposure?: boolean;
+  priority_score?: number;
+  plan_rank?: number;
+  score_breakdown?: {
+    water_component?: number;
+    infrastructure_component?: number;
+    disagreement_component?: number;
+  };
+  inspection_rationale?: string;
 }
 
 interface Scene {
@@ -70,14 +86,60 @@ interface Scene {
   baseline_status?: string;
   has_permanent_baseline?: boolean;
   water_label?: string;
+  infrastructure?: {
+    source: string;
+    data_disclaimer: string;
+    scene_summary: {
+      total_roads_count: number;
+      total_road_km: number;
+      overlapping_road_km: number;
+      total_buildings_count: number;
+      overlapping_buildings_count: number;
+      total_building_footprint_ha: number;
+      overlapping_building_footprint_ha: number;
+      settlements: Array<{
+        name: string;
+        type: string;
+        lat: number;
+        lon: number;
+        row: number;
+        col: number;
+        sector_id: string;
+      }>;
+    };
+  };
+  inspection_plan?: {
+    objective: string;
+    budget_k: number;
+    summary: {
+      budget_k: number;
+      objective: string;
+      selected_count: number;
+      total_candidate_water_in_plan_ha: number;
+      total_road_overlap_in_plan_m: number;
+      total_building_overlap_in_plan_ha: number;
+      settlements_covered: string[];
+      comparison_with_area_baseline: {
+        common_sectors_count: number;
+        divergent_sectors: string[];
+        explanation: string;
+      };
+    };
+    top_sectors: Sector[];
+    all_ranked_sectors: Sector[];
+  };
   img_sar_b64: string;
   img_cand_water_b64: string;
   img_perm_water_b64?: string;
   img_disagreement_b64: string;
+  img_roads_b64?: string;
+  img_buildings_b64?: string;
   sectors: Sector[];
   timings?: {
     feature_extraction_ms?: number;
     model_prediction_ms?: number;
+    infrastructure_ms?: number;
+    planning_ms?: number;
     rendering_ms?: number;
     total_pipeline_ms?: number;
   };
@@ -94,10 +156,16 @@ export default function SatelliteWorkspace() {
   const [predictionOpacity, setPredictionOpacity] = useState<number>(65);
   const [showPermanentWater, setShowPermanentWater] = useState<boolean>(true);
   const [showDisagreement, setShowDisagreement] = useState<boolean>(false);
+  const [showRoads, setShowRoads] = useState<boolean>(true);
+  const [showBuildings, setShowBuildings] = useState<boolean>(true);
   const [showAllSectors, setShowAllSectors] = useState<boolean>(false);
   const [showPlaceLabels, setShowPlaceLabels] = useState<boolean>(true);
   const [selectedSector, setSelectedSector] = useState<string>('SEC_34');
   const [showLayersDropdown, setShowLayersDropdown] = useState<boolean>(false);
+
+  // Inspection Planning state
+  const [planObjective, setPlanObjective] = useState<string>('balanced');
+  const [planBudgetK, setPlanBudgetK] = useState<number>(10);
 
   // Pan & Zoom state
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -340,14 +408,30 @@ export default function SatelliteWorkspace() {
   const maxSectorHa = current.geodesy?.max_sector_ha || 36.47;
   const footprintKm2 = current.geodesy?.footprint_km2 || 23.34;
 
-  // Filtered queue
-  const filteredSectors = current.sectors.filter((sec) => {
-    const matchesSearch = sec.id.toLowerCase().includes(searchQuery.toLowerCase());
-    if (filterSeverity === 'large') return matchesSearch && sec.candidate_water_ha > 15;
-    if (filterSeverity === 'moderate') return matchesSearch && sec.candidate_water_ha > 5 && sec.candidate_water_ha <= 15;
-    if (filterSeverity === 'conflict') return matchesSearch && sec.disagreement_ha > 4;
-    return matchesSearch;
-  });
+  // Filtered queue with planning support
+  const filteredSectors = current.sectors
+    .filter((sec) => {
+      const matchesSearch = sec.id.toLowerCase().includes(searchQuery.toLowerCase());
+      if (filterSeverity === 'infra') return matchesSearch && (sec.has_exposure || (sec.road_overlap_m || 0) > 0 || (sec.building_overlap_ha || 0) > 0);
+      if (filterSeverity === 'large') return matchesSearch && sec.candidate_water_ha > 15;
+      if (filterSeverity === 'moderate') return matchesSearch && sec.candidate_water_ha > 5 && sec.candidate_water_ha <= 15;
+      if (filterSeverity === 'conflict') return matchesSearch && sec.disagreement_ha > 4;
+      return matchesSearch;
+    })
+    .sort((a, b) => {
+      if (planObjective === 'infrastructure') {
+        const aOv = (a.road_overlap_m || 0) + (a.building_overlap_ha || 0) * 100;
+        const bOv = (b.road_overlap_m || 0) + (b.building_overlap_ha || 0) * 100;
+        return bOv - aOv;
+      }
+      if (planObjective === 'conflict') {
+        return b.disagreement_ha - a.disagreement_ha;
+      }
+      if (planObjective === 'balanced' && a.priority_score !== undefined && b.priority_score !== undefined) {
+        return b.priority_score - a.priority_score;
+      }
+      return b.candidate_water_ha - a.candidate_water_ha;
+    });
 
   const isIndia = selectedKey.startsWith('India');
 
@@ -627,6 +711,32 @@ export default function SatelliteWorkspace() {
                     style={{ accentColor: '#10b981' }}
                   />
                 </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#f97316' }}></span>
+                    <span>Mapped Roads (OSM)</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={showRoads} 
+                    onChange={(e) => setShowRoads(e.target.checked)}
+                    style={{ accentColor: '#f97316' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#a855f7' }}></span>
+                    <span>Building Footprints (OSM)</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={showBuildings} 
+                    onChange={(e) => setShowBuildings(e.target.checked)}
+                    style={{ accentColor: '#a855f7' }}
+                  />
+                </label>
               </div>
             )}
           </div>
@@ -750,6 +860,42 @@ export default function SatelliteWorkspace() {
                     height: '100%', 
                     objectFit: 'contain', 
                     opacity: (predictionOpacity / 100) * 0.9
+                  }}
+                />
+              )}
+
+              {/* Layer 3B: Mapped Roads Overlay (Orange RGBA with Red Overlap) */}
+              {showRoads && current.img_roads_b64 && (
+                <img 
+                  src={`data:image/png;base64,${current.img_roads_b64}`}
+                  alt="OSM Mapped Roads"
+                  style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain', 
+                    opacity: 0.90,
+                    pointerEvents: 'none'
+                  }}
+                />
+              )}
+
+              {/* Layer 3C: Building Footprints Overlay (Purple RGBA with Magenta Overlap) */}
+              {showBuildings && current.img_buildings_b64 && (
+                <img 
+                  src={`data:image/png;base64,${current.img_buildings_b64}`}
+                  alt="OSM Building Footprints"
+                  style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain', 
+                    opacity: 0.85,
+                    pointerEvents: 'none'
                   }}
                 />
               )}
@@ -986,20 +1132,73 @@ export default function SatelliteWorkspace() {
             </div>
           </div>
 
-          {/* Section 2: Verification Queue with Live Task Status & Reason */}
+          {/* Section 2: Explainable Inspection Planning & Prioritization */}
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2433' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Verification Queue ({filteredSectors.length})
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Navigation size={13} color="#38bdf8" />
+                <span>Inspection Planning (Budget K)</span>
+              </div>
+              <span className="font-mono" style={{ fontSize: '10px', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                Objective: {planObjective}
+              </span>
+            </div>
+
+            {/* Objective & Budget K controls */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+              <div>
+                <label style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Strategy</label>
+                <select 
+                  value={planObjective} 
+                  onChange={(e) => setPlanObjective(e.target.value)}
+                  style={{ width: '100%', padding: '4px 8px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '4px', fontSize: '11px' }}
+                >
+                  <option value="balanced">Balanced Multi-Criteria</option>
+                  <option value="infrastructure">Infrastructure First</option>
+                  <option value="candidate_water">Candidate Water Extent</option>
+                  <option value="conflict">Model Disagreement</option>
+                </select>
               </div>
 
-              {/* Filter pills */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8', marginBottom: '2px' }}>
+                  <span>Sector Budget K:</span>
+                  <strong className="font-mono" style={{ color: '#38bdf8' }}>{planBudgetK}</strong>
+                </div>
+                <input 
+                  type="range" 
+                  min="3" 
+                  max="20" 
+                  value={planBudgetK} 
+                  onChange={(e) => setPlanBudgetK(Number(e.target.value))}
+                  style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+                />
+              </div>
+            </div>
+
+            {/* Plan Baseline Comparison Alert */}
+            {current.inspection_plan?.summary?.comparison_with_area_baseline && (
+              <div style={{ background: '#10141f', border: '1px solid #1e293b', borderRadius: '4px', padding: '6px 8px', fontSize: '10px', color: '#94a3b8', marginBottom: '10px' }}>
+                <span style={{ color: '#38bdf8', fontWeight: '600' }}>Baseline Comparison: </span>
+                {current.inspection_plan.summary.comparison_with_area_baseline.explanation}
+              </div>
+            )}
+
+            {/* Queue Filter Pills */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>Queue Sectors ({filteredSectors.length})</span>
               <div style={{ display: 'flex', gap: '4px' }}>
                 <button 
                   onClick={() => setFilterSeverity('all')}
                   style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'all' ? '#2563eb' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   All
+                </button>
+                <button 
+                  onClick={() => setFilterSeverity('infra')}
+                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'infra' ? '#f97316' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Infra Overlap
                 </button>
                 <button 
                   onClick={() => setFilterSeverity('large')}
@@ -1029,10 +1228,11 @@ export default function SatelliteWorkspace() {
             </div>
 
             {/* Queue rows */}
-            <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {filteredSectors.slice(0, 10).map((sec) => {
+            <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {filteredSectors.slice(0, 15).map((sec) => {
                 const isSelected = selectedSector === sec.id;
                 const secTask = tasks.find((t) => t.chip_id === selectedKey && t.sector_id === sec.id);
+                const isTopPlan = sec.plan_rank !== undefined && sec.plan_rank <= planBudgetK;
 
                 return (
                   <div 
@@ -1043,7 +1243,7 @@ export default function SatelliteWorkspace() {
                       padding: '8px 10px', 
                       borderRadius: '6px', 
                       background: isSelected ? '#1e2433' : '#151821', 
-                      border: isSelected ? '1px solid #38bdf8' : '1px solid #202534',
+                      border: isSelected ? '1px solid #38bdf8' : (isTopPlan ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid #202534'),
                       cursor: 'pointer',
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -1055,6 +1255,11 @@ export default function SatelliteWorkspace() {
                         <span className="font-mono" style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#38bdf8' : '#e2e8f0' }}>
                           #{sec.rank} {sec.id}
                         </span>
+                        {isTopPlan && (
+                          <span style={{ fontSize: '9px', background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', padding: '1px 5px', borderRadius: '3px', fontWeight: '600' }}>
+                            PLAN #{sec.plan_rank}
+                          </span>
+                        )}
                         {secTask && (
                           <span style={{ 
                             fontSize: '9px', 
@@ -1073,7 +1278,7 @@ export default function SatelliteWorkspace() {
                         )}
                       </div>
                       <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
-                        {sec.candidate_water_ha > 15 ? 'Large candidate-water area' : 'Moderate candidate-water extent'}
+                        {sec.inspection_rationale || (sec.candidate_water_ha > 15 ? 'Large candidate-water area' : 'Moderate candidate-water extent')}
                       </div>
                     </div>
 
@@ -1081,6 +1286,11 @@ export default function SatelliteWorkspace() {
                       <span className="font-mono" style={{ fontSize: '12px', fontWeight: '700', color: '#f43f5e' }}>
                         {sec.candidate_water_ha} ha
                       </span>
+                      {sec.road_overlap_m && sec.road_overlap_m > 0 && (
+                        <div style={{ fontSize: '9px', color: '#f97316' }}>
+                          {sec.road_overlap_m.toFixed(0)}m road
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1088,30 +1298,67 @@ export default function SatelliteWorkspace() {
             </div>
           </div>
 
-          {/* Section 3: Selected Sector Details, Evidence & Assignment */}
+          {/* Section 3: Selected Sector Details, Real OSM Infrastructure & Evidence */}
           <div style={{ padding: '16px 20px', flex: 1 }}>
             <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-              Selected Sector & Evidence
+              Selected Sector & Infrastructure Exposure
             </div>
 
-            {/* Summary card */}
+            {/* Summary card with real OSM exposure breakdown */}
             <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="font-mono" style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>{selectedSector}</span>
-                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Rank #{activeSectorData?.rank || '-'}</span>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  {activeSectorData?.plan_rank && (
+                    <span style={{ fontSize: '10px', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '1px 5px', borderRadius: '3px' }}>
+                      Priority Plan #{activeSectorData.plan_rank}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>Area Rank #{activeSectorData?.rank || '-'}</span>
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px', fontSize: '11px' }}>
+
+              {/* Water Extents */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '8px', fontSize: '11px' }}>
                 <div>{current.has_permanent_baseline === false || (current.total_permanent_water_ha || 0) === 0 ? 'Surface Water' : 'Candidate Water'}: <strong style={{ color: '#f43f5e' }}>{activeSectorData?.candidate_water_ha || 0} ha</strong></div>
                 <div>Permanent Water: <strong style={{ color: '#38bdf8' }}>{activeSectorData?.permanent_water_ha || 0} ha</strong></div>
                 <div>Model Disagreement: <strong style={{ color: '#f59e0b' }}>{activeSectorData?.disagreement_ha || 0} ha</strong></div>
                 <div>Sector Extent: <strong style={{ color: '#94a3b8' }}>{activeSectorData?.valid_ha || maxSectorHa} ha</strong></div>
               </div>
-              <div style={{ marginTop: '8px', fontSize: '10px', color: '#64748b', borderTop: '1px solid #1e2433', paddingTop: '6px' }}>
-                Verification Reason: {activeSectorData && activeSectorData.candidate_water_ha > 15 
-                  ? ((current.has_permanent_baseline === false || (current.total_permanent_water_ha || 0) === 0) 
-                      ? 'Large surface water extent detected requiring field survey.' 
-                      : 'High candidate water detected outside permanent channel requiring inspection.')
-                  : 'Standard sector inspection.'}
+
+              {/* OSM Infrastructure Exposure Details */}
+              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #1e2433' }}>
+                <div style={{ fontSize: '10px', fontWeight: '600', color: '#f97316', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>CONTEXTUAL INFRASTRUCTURE EXPOSURE (OSM)</span>
+                  <a 
+                    href={`https://www.openstreetmap.org/#map=16/${current.metadata?.lat}/${current.metadata?.lon}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '9px' }}
+                  >
+                    View in OSM ↗
+                  </a>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '11px' }}>
+                  <div>Roads Overlapping: <strong style={{ color: activeSectorData?.road_overlap_m ? '#f97316' : '#94a3b8' }}>{activeSectorData?.road_overlap_m || 0} m</strong></div>
+                  <div>Total Mapped Roads: <strong style={{ color: '#94a3b8' }}>{activeSectorData?.road_length_m || 0} m</strong></div>
+                  <div>Buildings Overlapping: <strong style={{ color: activeSectorData?.building_overlap_ha ? '#a855f7' : '#94a3b8' }}>{activeSectorData?.building_overlap_ha || 0} ha</strong></div>
+                  <div>Total Buildings: <strong style={{ color: '#94a3b8' }}>{activeSectorData?.building_ha || 0} ha</strong></div>
+                </div>
+                {activeSectorData?.settlements && activeSectorData.settlements.length > 0 && (
+                  <div style={{ marginTop: '4px', fontSize: '10px', color: '#10b981' }}>
+                    Intersecting Village: <strong>{activeSectorData.settlements.join(', ')}</strong>
+                  </div>
+                )}
+                <div style={{ marginTop: '6px', fontSize: '9px', color: '#64748b', fontStyle: 'italic' }}>
+                  Note: Reflects contextual potential exposure of mapped features. Not confirmed damage or road closure.
+                </div>
+              </div>
+
+              {/* Verification Rationale */}
+              <div style={{ marginTop: '8px', fontSize: '10px', color: '#94a3b8', borderTop: '1px solid #1e2433', paddingTop: '6px' }}>
+                <strong style={{ color: '#e2e8f0' }}>Inspection Rationale: </strong>
+                {activeSectorData?.inspection_rationale || 'Standard sector inspection.'}
               </div>
             </div>
 
