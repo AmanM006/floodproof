@@ -1053,10 +1053,10 @@ export default function SatelliteWorkspace() {
                             fontSize: '9px', 
                             padding: '1px 5px', 
                             borderRadius: '3px',
-                            background: secTask.status === 'field_verified' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(37, 99, 235, 0.15)',
-                            color: secTask.status === 'field_verified' ? '#10b981' : '#60a5fa'
+                            background: secTask.status === 'field_verified' ? (secTask.simulated_demonstration ? 'rgba(234, 179, 8, 0.15)' : 'rgba(16, 185, 129, 0.15)') : 'rgba(37, 99, 235, 0.15)',
+                            color: secTask.status === 'field_verified' ? (secTask.simulated_demonstration ? '#fde047' : '#10b981') : '#60a5fa'
                           }}>
-                            {secTask.status}
+                            {secTask.status === 'field_verified' && secTask.simulated_demonstration ? 'simulated_demo' : secTask.status}
                           </span>
                         )}
                         {sec.disagreement_ha > 4 && (
@@ -1234,16 +1234,33 @@ export default function SatelliteWorkspace() {
                     {activeTask.history.map((h: any, idx: number) => {
                       const isField = h.new_status === 'field_verified';
                       const isAnalyst = h.new_status === 'operator_reviewed';
+                      const isSimulated = activeTask.simulated_demonstration || h.evidence?.includes('simulated') || h.notes?.includes('Simulated') || h.notes?.includes('testing') || h.notes?.includes('Test') || h.actor?.includes('Tester') || h.actor?.includes('Deployment');
+                      
+                      let badgeText = '[DISPATCH]';
+                      let badgeColor = '#94a3b8';
+                      if (isField) {
+                        if (isSimulated) {
+                          badgeText = '[SIMULATED DEMO / TEST]';
+                          badgeColor = '#eab308';
+                        } else {
+                          badgeText = '[FIELD OBSERVATION]';
+                          badgeColor = '#10b981';
+                        }
+                      } else if (isAnalyst) {
+                        badgeText = '[HISTORICAL ANALYSIS]';
+                        badgeColor = '#38bdf8';
+                      }
+
                       return (
-                        <div key={idx} style={{ fontSize: '10px', padding: '6px 8px', background: '#161a24', borderRadius: '4px', borderLeft: isField ? '3px solid #10b981' : isAnalyst ? '3px solid #38bdf8' : '3px solid #64748b' }}>
+                        <div key={idx} style={{ fontSize: '10px', padding: '6px 8px', background: '#161a24', borderRadius: '4px', borderLeft: `3px solid ${badgeColor}` }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#e2e8f0', fontWeight: '600' }}>
                             <span>{h.previous_status} → {h.new_status}</span>
-                            <span style={{ color: isField ? '#10b981' : isAnalyst ? '#38bdf8' : '#94a3b8', fontSize: '9px', textTransform: 'uppercase' }}>
-                              {isField ? '[GROUND VERIFICATION]' : isAnalyst ? '[HISTORICAL ANALYSIS]' : '[DISPATCH]'}
+                            <span style={{ color: badgeColor, fontSize: '9px', textTransform: 'uppercase' }}>
+                              {badgeText}
                             </span>
                           </div>
                           {h.evidence && (
-                            <div style={{ color: '#10b981', marginTop: '2px', wordBreak: 'break-word' }}>
+                            <div style={{ color: isSimulated ? '#fde047' : '#10b981', marginTop: '2px', wordBreak: 'break-word' }}>
                               Evidence: {h.evidence}
                             </div>
                           )}

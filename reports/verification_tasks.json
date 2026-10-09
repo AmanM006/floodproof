@@ -14,36 +14,8 @@
         "new_status": "assigned",
         "notes": "Significant candidate water with high model disagreement. Dispatched for levee inspection."
       }
-    ]
-  },
-  {
-    "task_id": "TEST_AUTOMATED_TASK_001",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_01",
-    "assigned_team": "Unit Test Runner",
-    "status": "operator_reviewed",
-    "notes": "Reviewed by senior coordinator",
-    "created_at": "2026-10-09T05:59:11.753151+00:00",
-    "history": [
-      {
-        "transition_time": "2026-10-09T05:59:11.753151+00:00",
-        "previous_status": "created",
-        "new_status": "unassigned",
-        "notes": "Initial creation"
-      },
-      {
-        "transition_time": "2026-10-09T05:59:13.958252+00:00",
-        "previous_status": "unassigned",
-        "new_status": "assigned",
-        "notes": "Assigned to field unit"
-      },
-      {
-        "transition_time": "2026-10-09T05:59:16.216728+00:00",
-        "previous_status": "assigned",
-        "new_status": "operator_reviewed",
-        "notes": "Reviewed by senior coordinator"
-      }
-    ]
+    ],
+    "simulated_demonstration": false
   },
   {
     "task_id": "TASK_India_591317_SEC_41",
@@ -66,7 +38,8 @@
         "new_status": "assigned",
         "notes": "Candidate water observed outside permanent levee. Dispatched for embankment integrity verification."
       }
-    ]
+    ],
+    "simulated_demonstration": false
   },
   {
     "task_id": "TASK_India_591317_SEC_49",
@@ -83,7 +56,8 @@
         "new_status": "assigned",
         "notes": "Candidate water observed outside permanent levee. Dispatched for embankment integrity verification."
       }
-    ]
+    ],
+    "simulated_demonstration": false
   },
   {
     "task_id": "TASK_India_591317_SEC_34",
@@ -92,7 +66,7 @@
     "assigned_team": "Rapid Response 1",
     "status": "field_verified",
     "evidence": "Drone RGB photo #4829 tag confirms 12ha breach at levee",
-    "notes": "Analyst review of evidence",
+    "notes": "[Simulated Demonstration] Candidate flood water observed in sector. Evidence text provided for workflow demonstration.",
     "created_at": "2026-10-09T06:44:28.586Z",
     "actor": "FloodProof Operator",
     "history": [
@@ -102,7 +76,7 @@
         "previous_status": "created",
         "new_status": "field_verified",
         "evidence": "Drone RGB photograph #4928 shows embankment breach at chainage 12+400",
-        "notes": "Ground team confirmed 14ha candidate water"
+        "notes": "[Simulated Demonstration] Ground verification workflow test"
       },
       {
         "transition_time": "2026-10-09T08:52:53.632Z",
@@ -118,347 +92,10 @@
         "previous_status": "operator_reviewed",
         "new_status": "field_verified",
         "evidence": "Drone RGB photo #4829 tag confirms 12ha breach at levee",
-        "notes": ""
+        "notes": "[Simulated Demonstration] Ground verification workflow test"
       }
     ],
-    "updated_at": "2026-10-09T08:52:56.420Z"
-  },
-  {
-    "task_id": "TEST_CANONICAL_STATE_001",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_99",
-    "assigned_team": "Regression Tester",
-    "status": "operator_reviewed",
-    "notes": "Dispatched",
-    "history": [
-      {
-        "transition_time": "2026-10-09T08:56:10.146463+00:00",
-        "previous_status": "created",
-        "new_status": "assigned",
-        "notes": "Dispatched"
-      },
-      {
-        "transition_time": "2026-10-09T08:56:12.260880+00:00",
-        "previous_status": "assigned",
-        "new_status": "operator_reviewed",
-        "notes": "Dispatched"
-      },
-      {
-        "transition_time": "2026-10-09T09:01:36.060068+00:00",
-        "previous_status": "operator_reviewed",
-        "new_status": "assigned",
-        "notes": "Dispatched"
-      },
-      {
-        "transition_time": "2026-10-09T09:01:38.273915+00:00",
-        "previous_status": "assigned",
-        "new_status": "operator_reviewed",
-        "notes": "Dispatched"
-      }
-    ]
-  },
-  {
-    "task_id": "TASK_India_591317_SEC_999",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_999",
-    "version": 3,
-    "actor": "Satellite Analyst",
-    "assigned_team": "Alpha",
-    "status": "field_verified",
-    "evidence": "GPS Log #449102 Silghat survey",
-    "notes": "Field team en route",
-    "created_at": "2026-10-09T09:37:40.463Z",
-    "updated_at": "2026-10-09T09:38:09.862Z",
-    "history": [
-      {
-        "transition_time": "2026-10-09T09:37:40.463Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "created",
-        "new_status": "assigned",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T09:38:07.651Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "assigned",
-        "new_status": "in_progress",
-        "evidence": "",
-        "notes": "Field team en route"
-      },
-      {
-        "transition_time": "2026-10-09T09:38:09.862Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "in_progress",
-        "new_status": "field_verified",
-        "evidence": "GPS Log #449102 Silghat survey",
-        "notes": ""
-      }
-    ]
-  },
-  {
-    "task_id": "TASK_India_591317_SEC_TEST_REG",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_TEST_REG",
-    "version": 4,
-    "actor": "Satellite Analyst",
-    "assigned_team": "Testing Crew",
-    "status": "field_verified",
-    "evidence": "GPS Log #123456789",
-    "notes": "",
-    "created_at": "2026-10-09T09:39:31.782Z",
-    "updated_at": "2026-10-09T09:41:12.118Z",
-    "history": [
-      {
-        "transition_time": "2026-10-09T09:39:31.782Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "created",
-        "new_status": "assigned",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T09:39:35.389Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "assigned",
-        "new_status": "in_progress",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T09:39:40.552Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "in_progress",
-        "new_status": "field_verified",
-        "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T09:41:12.118Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "field_verified",
-        "new_status": "field_verified",
-        "evidence": "GPS Log #123456789",
-        "notes": ""
-      }
-    ]
-  },
-  {
-    "task_id": "TASK_India_591317_SEC_TEST_18876",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_TEST_18876",
-    "version": 3,
-    "actor": "Satellite Analyst",
-    "assigned_team": "Testing Crew",
-    "status": "field_verified",
-    "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
-    "notes": "",
-    "created_at": "2026-10-09T09:41:58.974Z",
-    "updated_at": "2026-10-09T09:42:08.082Z",
-    "history": [
-      {
-        "transition_time": "2026-10-09T09:41:58.974Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "created",
-        "new_status": "assigned",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T09:42:03.253Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "assigned",
-        "new_status": "in_progress",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T09:42:08.082Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "in_progress",
-        "new_status": "field_verified",
-        "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
-        "notes": ""
-      }
-    ]
-  },
-  {
-    "task_id": "TASK_India_591317_SEC_TEST_67274",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_TEST_67274",
-    "version": 3,
-    "actor": "Satellite Analyst",
-    "assigned_team": "Testing Crew",
-    "status": "field_verified",
-    "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
-    "notes": "",
-    "created_at": "2026-10-09T09:42:47.423Z",
-    "updated_at": "2026-10-09T09:42:58.661Z",
-    "history": [
-      {
-        "transition_time": "2026-10-09T09:42:47.423Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "created",
-        "new_status": "assigned",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T09:42:53.228Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "assigned",
-        "new_status": "in_progress",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T09:42:58.661Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "in_progress",
-        "new_status": "field_verified",
-        "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
-        "notes": ""
-      }
-    ]
-  },
-  {
-    "task_id": "TASK_India_591317_SEC_TEST_62004",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_TEST_62004",
-    "version": 3,
-    "actor": "Satellite Analyst",
-    "assigned_team": "Testing Crew",
-    "status": "field_verified",
-    "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
-    "notes": "",
-    "created_at": "2026-10-09T12:47:42.701Z",
-    "updated_at": "2026-10-09T12:47:47.686Z",
-    "history": [
-      {
-        "transition_time": "2026-10-09T12:47:42.701Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "created",
-        "new_status": "assigned",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T12:47:45.528Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "assigned",
-        "new_status": "in_progress",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T12:47:47.686Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "in_progress",
-        "new_status": "field_verified",
-        "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
-        "notes": ""
-      }
-    ]
-  },
-  {
-    "task_id": "TASK_India_591317_SEC_CONCUR_69815",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_CONCUR_69815",
-    "version": 2,
-    "actor": "Satellite Analyst",
-    "assigned_team": "Op1",
-    "status": "in_progress",
-    "evidence": "",
-    "notes": "",
-    "created_at": "2026-10-09T12:47:49.825Z",
-    "updated_at": "2026-10-09T12:47:52.012Z",
-    "history": [
-      {
-        "transition_time": "2026-10-09T12:47:49.825Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "created",
-        "new_status": "assigned",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T12:47:52.012Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "assigned",
-        "new_status": "in_progress",
-        "evidence": "",
-        "notes": ""
-      }
-    ]
-  },
-  {
-    "task_id": "TASK_India_591317_SEC_TEST_88834",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_TEST_88834",
-    "version": 3,
-    "actor": "Satellite Analyst",
-    "assigned_team": "Testing Crew",
-    "status": "field_verified",
-    "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
-    "notes": "",
-    "created_at": "2026-10-09T12:48:08.930Z",
-    "updated_at": "2026-10-09T12:48:13.606Z",
-    "history": [
-      {
-        "transition_time": "2026-10-09T12:48:08.930Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "created",
-        "new_status": "assigned",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T12:48:11.295Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "assigned",
-        "new_status": "in_progress",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T12:48:13.606Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "in_progress",
-        "new_status": "field_verified",
-        "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
-        "notes": ""
-      }
-    ]
-  },
-  {
-    "task_id": "TASK_India_591317_SEC_CONCUR_95862",
-    "chip_id": "India_591317",
-    "sector_id": "SEC_CONCUR_95862",
-    "version": 2,
-    "actor": "Satellite Analyst",
-    "assigned_team": "Op1",
-    "status": "in_progress",
-    "evidence": "",
-    "notes": "",
-    "created_at": "2026-10-09T12:48:15.879Z",
-    "updated_at": "2026-10-09T12:48:18.200Z",
-    "history": [
-      {
-        "transition_time": "2026-10-09T12:48:15.879Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "created",
-        "new_status": "assigned",
-        "evidence": "",
-        "notes": ""
-      },
-      {
-        "transition_time": "2026-10-09T12:48:18.200Z",
-        "actor": "Satellite Analyst",
-        "previous_status": "assigned",
-        "new_status": "in_progress",
-        "evidence": "",
-        "notes": ""
-      }
-    ]
+    "updated_at": "2026-10-09T08:52:56.420Z",
+    "simulated_demonstration": true
   }
 ]

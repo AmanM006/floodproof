@@ -1,0 +1,80 @@
+[
+  {
+    "task_id": "TASK_India_591317_SEC_AWS_01",
+    "chip_id": "India_591317",
+    "sector_id": "SEC_AWS_01",
+    "version": 3,
+    "actor": "Deployment Analyst",
+    "assigned_team": "AWS Alpha Response Team",
+    "status": "field_verified",
+    "evidence": "Field survey GPS tag #SEC-AWS-01-SILGHAT-2026",
+    "notes": "Survey confirms inundation outside permanent river channel",
+    "created_at": "2026-10-09T13:29:22.930Z",
+    "updated_at": "2026-10-09T13:29:26.806Z",
+    "history": [
+      {
+        "transition_time": "2026-10-09T13:29:22.930Z",
+        "actor": "Deployment Analyst",
+        "previous_status": "created",
+        "new_status": "assigned",
+        "evidence": "",
+        "notes": "Dispatched via live EC2 backend"
+      },
+      {
+        "transition_time": "2026-10-09T13:29:24.917Z",
+        "actor": "Field Operator 09",
+        "previous_status": "assigned",
+        "new_status": "in_progress",
+        "evidence": "",
+        "notes": "Unit arriving on sector perimeter"
+      },
+      {
+        "transition_time": "2026-10-09T13:29:26.806Z",
+        "actor": "Field Officer K. Sharma",
+        "previous_status": "in_progress",
+        "new_status": "field_verified",
+        "evidence": "Field survey GPS tag #SEC-AWS-01-SILGHAT-2026",
+        "notes": "Survey confirms inundation outside permanent river channel"
+      }
+    ]
+  },
+  {
+    "task_id": "TASK_India_1018327_SEC_63",
+    "chip_id": "India_1018327",
+    "sector_id": "SEC_63",
+    "version": 3,
+    "actor": "Lead Satellite Analyst",
+    "assigned_team": "Rapid Flood Response Alpha",
+    "status": "field_verified",
+    "evidence": "UAV Aerial Orthomosaic #UAV-SILGHAT-2026-088 High Water Inundation Mark",
+    "notes": "Field survey confirmed 35ha surface inundation outside main levee chainage",
+    "created_at": "2026-10-09T14:29:50.095Z",
+    "updated_at": "2026-10-09T14:29:54.089Z",
+    "history": [
+      {
+        "transition_time": "2026-10-09T14:29:50.095Z",
+        "actor": "Lead Satellite Analyst",
+        "previous_status": "created",
+        "new_status": "assigned",
+        "evidence": "",
+        "notes": "Dispatched field team for priority sector"
+      },
+      {
+        "transition_time": "2026-10-09T14:29:52.152Z",
+        "actor": "Ground Field Officer R. Das",
+        "previous_status": "assigned",
+        "new_status": "in_progress",
+        "evidence": "",
+        "notes": "Field team deployed with GPS surveyor"
+      },
+      {
+        "transition_time": "2026-10-09T14:29:54.089Z",
+        "actor": "Ground Field Officer R. Das",
+        "previous_status": "in_progress",
+        "new_status": "field_verified",
+        "evidence": "UAV Aerial Orthomosaic #UAV-SILGHAT-2026-088 High Water Inundation Mark",
+        "notes": "Field survey confirmed 35ha surface inundation outside main levee chainage"
+      }
+    ]
+  }
+]
