@@ -1,0 +1,48 @@
+[
+  {
+    "task_id": "TASK_IND_SEC_49",
+    "chip_id": "India_591317",
+    "sector_id": "SEC_49",
+    "assigned_team": "Brahmaputra Quick Response Team 2",
+    "status": "assigned",
+    "notes": "Significant candidate water with high model disagreement. Dispatched for levee inspection.",
+    "created_at": "2026-10-09T05:57:23.382394+00:00",
+    "history": [
+      {
+        "transition_time": "2026-10-09T05:57:23.382394+00:00",
+        "previous_status": "created",
+        "new_status": "assigned",
+        "notes": "Significant candidate water with high model disagreement. Dispatched for levee inspection."
+      }
+    ]
+  },
+  {
+    "task_id": "TEST_AUTOMATED_TASK_001",
+    "chip_id": "India_591317",
+    "sector_id": "SEC_01",
+    "assigned_team": "Unit Test Runner",
+    "status": "operator_reviewed",
+    "notes": "Reviewed by senior coordinator",
+    "created_at": "2026-10-09T05:59:11.753151+00:00",
+    "history": [
+      {
+        "transition_time": "2026-10-09T05:59:11.753151+00:00",
+        "previous_status": "created",
+        "new_status": "unassigned",
+        "notes": "Initial creation"
+      },
+      {
+        "transition_time": "2026-10-09T05:59:13.958252+00:00",
+        "previous_status": "unassigned",
+        "new_status": "assigned",
+        "notes": "Assigned to field unit"
+      },
+      {
+        "transition_time": "2026-10-09T05:59:16.216728+00:00",
+        "previous_status": "assigned",
+        "new_status": "operator_reviewed",
+        "notes": "Reviewed by senior coordinator"
+      }
+    ]
+  }
+]
