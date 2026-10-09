@@ -19,14 +19,36 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   'inconclusive': ['assigned']
 };
 
+async function loadTasksWithS3Fallback(): Promise<{ tasks: any[]; cloud_synced: boolean }> {
+  if (fs.existsSync(TASKS_PATH)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(TASKS_PATH, 'utf-8'));
+      return { tasks: Array.isArray(data) ? data : [], cloud_synced: true };
+    } catch (e) {
+      console.warn('Local tasks file corrupt, attempting S3 pull recovery...');
+    }
+  }
+
+  // Attempt recovery from AWS S3
+  try {
+    const awsArgs = ['s3', 'cp', `s3://${S3_BUCKET}/tasks/verification_tasks.json`, TASKS_PATH];
+    await execFilePromise('aws', awsArgs, { shell: false });
+    if (fs.existsSync(TASKS_PATH)) {
+      const recovered = JSON.parse(fs.readFileSync(TASKS_PATH, 'utf-8'));
+      return { tasks: Array.isArray(recovered) ? recovered : [], cloud_synced: true };
+    }
+  } catch (err) {
+    console.warn('S3 pull recovery unavailable:', err);
+  }
+
+  return { tasks: [], cloud_synced: false };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      if (!fs.existsSync(TASKS_PATH)) {
-        return res.status(200).json({ tasks: [], cloud_synced: false });
-      }
-      const data = JSON.parse(fs.readFileSync(TASKS_PATH, 'utf-8'));
-      return res.status(200).json(data);
+      const { tasks, cloud_synced } = await loadTasksWithS3Fallback();
+      return res.status(200).json(tasks);
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }
@@ -46,10 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Canonical task ID: TASK_<chip_id>_<sector_id>
       const canonicalId = `TASK_${chipId}_${sectorId}`;
 
-      let tasks: any[] = [];
-      if (fs.existsSync(TASKS_PATH)) {
-        tasks = JSON.parse(fs.readFileSync(TASKS_PATH, 'utf-8'));
-      }
+      const { tasks } = await loadTasksWithS3Fallback();
 
       const existingIdx = tasks.findIndex((t: any) => t.task_id === canonicalId || (t.chip_id === chipId && t.sector_id === sectorId));
       const currentStatus = existingIdx >= 0 ? tasks[existingIdx].status : 'created';
@@ -91,6 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updatedTask = {
           ...prev,
           task_id: canonicalId,
+          version: (prev.version || 1) + 1,
           status: newStatus,
           assigned_team: task.assigned_team || prev.assigned_team || 'Unassigned',
           evidence: task.evidence || prev.evidence || '',
@@ -104,6 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           task_id: canonicalId,
           chip_id: chipId,
           sector_id: sectorId,
+          version: 1,
           actor,
           assigned_team: task.assigned_team || 'Unassigned',
           status: newStatus,
@@ -123,8 +144,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         tasks.push(updatedTask);
       }
 
-      // Atomic file write
-      fs.writeFileSync(TASKS_PATH, JSON.stringify(tasks, null, 2), 'utf-8');
+      // Truly Atomic File Write via Temp File + Replace
+      const tempPath = `${TASKS_PATH}.tmp.${Date.now()}`;
+      fs.writeFileSync(tempPath, JSON.stringify(tasks, null, 2), 'utf-8');
+      fs.renameSync(tempPath, TASKS_PATH);
 
       // 3. AWAIT Real S3 Cloud Persistence
       let s3Success = false;

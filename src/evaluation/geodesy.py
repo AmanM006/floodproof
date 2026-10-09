@@ -45,15 +45,18 @@ def compute_sector_areas(valid_pixels_count: int, candidate_water_pixels_count: 
     cand_water_ha = round(candidate_water_pixels_count * px_ha, 4)
 
     # Invariant: candidate water cannot exceed valid sector area
-    if cand_water_ha > sector_valid_ha:
-        cand_water_ha = sector_valid_ha
+    if candidate_water_pixels_count > valid_pixels_count or cand_water_ha > sector_valid_ha:
+        raise ValueError(
+            f"Geodetic Invariant Violation: Candidate water ({cand_water_ha} ha, {candidate_water_pixels_count} px) "
+            f"exceeds valid sector area ({sector_valid_ha} ha, {valid_pixels_count} px)."
+        )
 
     return {
         'pixel_area_m2': float(geom['pixel_area_m2']),
         'pixel_area_ha': float(px_ha),
         'sector_valid_ha': float(sector_valid_ha),
         'candidate_water_ha': float(cand_water_ha),
-        'invariant_passed': bool(cand_water_ha <= sector_valid_ha)
+        'invariant_passed': True
     }
 
 if __name__ == '__main__':

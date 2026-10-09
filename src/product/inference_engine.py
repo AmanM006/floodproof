@@ -6,6 +6,11 @@ Outputs full JSON including b64 images or writes directly to file.
 import sys
 import os
 import json
+
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
 from src.product.shared_pipeline import run_pipeline
 
 if __name__ == '__main__':

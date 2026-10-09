@@ -675,10 +675,10 @@ export default function SatelliteWorkspace() {
                 }}
               />
 
-              {/* Layer 2: Model Prediction Mask (Candidate Water + Permanent Baseline) */}
+              {/* Layer 2: Candidate Flood Water Mask (Crimson RGBA, Independent Toggle) */}
               <img 
                 src={`data:image/png;base64,${current.img_cand_water_b64}`}
-                alt="Prediction Mask"
+                alt="Candidate Flood Water Mask"
                 style={{ 
                   position: 'absolute', 
                   top: 0, 
@@ -689,6 +689,23 @@ export default function SatelliteWorkspace() {
                   opacity: predictionOpacity / 100
                 }}
               />
+
+              {/* Layer 2B: Permanent Water Baseline (Cyan RGBA, Controlled by showPermanentWater) */}
+              {showPermanentWater && current.img_perm_water_b64 && (
+                <img 
+                  src={`data:image/png;base64,${current.img_perm_water_b64}`}
+                  alt="Permanent Water Baseline"
+                  style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain', 
+                    opacity: (predictionOpacity / 100) * 0.95
+                  }}
+                />
+              )}
 
               {/* Layer 3: Model Disagreement Overlay (Conditional) */}
               {showDisagreement && (
@@ -790,20 +807,65 @@ export default function SatelliteWorkspace() {
                 </div>
               )}
 
-              {/* Layer 5: Genuine OSM Place Labels (India Scene) */}
-              {showPlaceLabels && isIndia && (
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-                  <div style={{ position: 'absolute', top: '16%', right: '22%', background: 'rgba(15, 18, 26, 0.88)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#e2e8f0', border: '1px solid #232a3b' }}>
-                    Panpur (Village)
+              {/* Layer 5: Georeferenced OSM Ground Features (Positioned via Actual GeoTIFF Affine Transform) */}
+              {showPlaceLabels && (() => {
+                const meta = current.metadata;
+                const oLon = meta?.origin_lon ?? (meta?.lon ? meta.lon - (256 * 0.0000898315) : null);
+                const oLat = meta?.origin_lat ?? (meta?.lat ? meta.lat + (256 * 0.0000898315) : null);
+                const rx = meta?.res_deg_x ?? 0.0000898315284;
+                const ry = meta?.res_deg_y ?? 0.0000898315284;
+
+                if (!oLon || !oLat) return null;
+
+                // Ground Truth Features from OpenStreetMap
+                const groundFeatures = [
+                  { name: 'Silghat', type: 'Village', lat: 26.6014498, lon: 92.926113 },
+                  { name: 'Panpur', type: 'Village', lat: 26.6776696, lon: 92.9369717 }
+                ];
+
+                const rendered = groundFeatures.map((gf) => {
+                  const pxX = (gf.lon - oLon) / rx;
+                  const pxY = (oLat - gf.lat) / ry;
+                  // Only display if genuinely located within this 512x512 raster extent
+                  if (pxX >= 0 && pxX <= 512 && pxY >= 0 && pxY <= 512) {
+                    const leftPct = (pxX / 512) * 100;
+                    const topPct = (pxY / 512) * 100;
+                    return (
+                      <div 
+                        key={gf.name}
+                        style={{ 
+                          position: 'absolute', 
+                          top: `${topPct}%`, 
+                          left: `${leftPct}%`, 
+                          transform: 'translate(-50%, -100%)',
+                          background: 'rgba(15, 18, 26, 0.90)', 
+                          border: '1px solid #10b981',
+                          padding: '2px 6px', 
+                          borderRadius: '3px', 
+                          fontSize: '10px', 
+                          color: '#e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.7)',
+                          pointerEvents: 'none',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
+                        <span>{gf.name} ({gf.type})</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                }).filter(Boolean);
+
+                return (
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+                    {rendered}
                   </div>
-                  <div style={{ position: 'absolute', bottom: '22%', right: '32%', background: 'rgba(15, 18, 26, 0.88)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#e2e8f0', border: '1px solid #232a3b' }}>
-                    Silghat (Village)
-                  </div>
-                  <div style={{ position: 'absolute', top: '44%', left: '16%', background: 'rgba(15, 18, 26, 0.88)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#93c5fd', border: '1px solid #1e3a8a' }}>
-                    Brahmaputra Main Channel
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
             </div>
           </div>
