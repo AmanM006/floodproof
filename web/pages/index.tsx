@@ -115,6 +115,7 @@ export default function SatelliteWorkspace() {
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadJrcFile, setUploadJrcFile] = useState<File | null>(null);
   const [uploadName, setUploadName] = useState<string>('Uploaded Sentinel-1 SAR Scene');
   const [uploading, setUploading] = useState<boolean>(false);
 
@@ -147,6 +148,9 @@ export default function SatelliteWorkspace() {
   // Sync task form fields whenever selected sector or chip changes
   useEffect(() => {
     const existing = tasks.find((t) => t.chip_id === selectedKey && t.sector_id === selectedSector);
+    const currScene = scenes[selectedKey];
+    const hasBaseline = currScene?.has_permanent_baseline !== false && (currScene?.total_permanent_water_ha || 0) > 0;
+
     if (existing) {
       setAssignedCrew(existing.assigned_team || 'Brahmaputra Verification Team Alpha');
       setTaskStatus(existing.status || 'assigned');
@@ -155,11 +159,15 @@ export default function SatelliteWorkspace() {
     } else {
       setAssignedCrew('Brahmaputra Verification Team Alpha');
       setTaskStatus('assigned');
-      setTaskNotes('Candidate surface water observed outside permanent channel. Scheduled for verification.');
+      if (hasBaseline) {
+        setTaskNotes('Candidate surface water observed outside permanent channel. Scheduled for field verification.');
+      } else {
+        setTaskNotes('Detected surface water extent (unstratified; permanent baseline unavailable). Scheduled for ground verification.');
+      }
       setTaskEvidence('');
     }
     setSaveFeedback(null);
-  }, [selectedSector, selectedKey, tasks]);
+  }, [selectedSector, selectedKey, tasks, scenes]);
 
   const loadScenes = () => {
     fetch('/api/scenes')
@@ -177,6 +185,11 @@ export default function SatelliteWorkspace() {
       .then((data) => {
         if (Array.isArray(data)) {
           setTasks(data);
+        } else if (data.tasks) {
+          setTasks(data.tasks);
+          if (data.cloud_synced !== undefined) {
+            setCloudSynced(data.cloud_synced);
+          }
         } else if (data.all_tasks) {
           setTasks(data.all_tasks);
         }
@@ -207,6 +220,9 @@ export default function SatelliteWorkspace() {
     setIsSaving(true);
     setSaveFeedback(null);
 
+    const existingTask = tasks.find((t) => t.chip_id === selectedKey && t.sector_id === selectedSector);
+    const expectedVersion = existingTask ? (existingTask.version || 1) : null;
+
     const payload = {
       chip_id: selectedKey,
       sector_id: selectedSector,
@@ -214,7 +230,8 @@ export default function SatelliteWorkspace() {
       assigned_team: assignedCrew,
       status: taskStatus,
       evidence: taskEvidence,
-      notes: taskNotes
+      notes: taskNotes,
+      expected_version: expectedVersion
     };
 
     try {
@@ -227,12 +244,15 @@ export default function SatelliteWorkspace() {
       setIsSaving(false);
 
       if (res.ok) {
-        setCloudSynced(data.cloud_persisted !== false);
+        setCloudSynced(data.cloud_persisted !== false && data.cloud_synced !== false);
         setSaveFeedback(data.cloud_persisted ? 'Task updated and persisted to S3 live' : 'Task updated locally (S3 pending)');
         loadTasks();
         setTimeout(() => setSaveFeedback(null), 4000);
       } else {
         setSaveFeedback(data.error || 'Failed to update task.');
+        if (res.status === 409) {
+          loadTasks(); // Stale version: immediately pull latest tasks
+        }
       }
     } catch {
       setIsSaving(false);
@@ -251,6 +271,9 @@ export default function SatelliteWorkspace() {
     const formData = new FormData();
     formData.append('file', uploadFile);
     formData.append('name', uploadName);
+    if (uploadJrcFile) {
+      formData.append('jrc_file', uploadJrcFile);
+    }
 
     try {
       const res = await fetch('/api/infer', {
@@ -932,7 +955,9 @@ export default function SatelliteWorkspace() {
             {/* Stats pills */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '12px' }}>
               <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
-                <div style={{ fontSize: '10px', color: '#94a3b8' }}>Candidate Water</div>
+                <div style={{ fontSize: '10px', color: '#94a3b8' }}>
+                  {current.has_permanent_baseline === false || (current.total_permanent_water_ha || 0) === 0 ? 'Surface Water' : 'Candidate Water'}
+                </div>
                 <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: '#f43f5e', marginTop: '2px' }}>
                   {current.total_candidate_water_ha} ha
                 </div>
@@ -1069,13 +1094,17 @@ export default function SatelliteWorkspace() {
                 <span style={{ fontSize: '11px', color: '#94a3b8' }}>Rank #{activeSectorData?.rank || '-'}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px', fontSize: '11px' }}>
-                <div>Candidate Water: <strong style={{ color: '#f43f5e' }}>{activeSectorData?.candidate_water_ha || 0} ha</strong></div>
+                <div>{current.has_permanent_baseline === false || (current.total_permanent_water_ha || 0) === 0 ? 'Surface Water' : 'Candidate Water'}: <strong style={{ color: '#f43f5e' }}>{activeSectorData?.candidate_water_ha || 0} ha</strong></div>
                 <div>Permanent Water: <strong style={{ color: '#38bdf8' }}>{activeSectorData?.permanent_water_ha || 0} ha</strong></div>
                 <div>Model Disagreement: <strong style={{ color: '#f59e0b' }}>{activeSectorData?.disagreement_ha || 0} ha</strong></div>
                 <div>Sector Extent: <strong style={{ color: '#94a3b8' }}>{activeSectorData?.valid_ha || maxSectorHa} ha</strong></div>
               </div>
               <div style={{ marginTop: '8px', fontSize: '10px', color: '#64748b', borderTop: '1px solid #1e2433', paddingTop: '6px' }}>
-                Verification Reason: {activeSectorData && activeSectorData.candidate_water_ha > 15 ? 'High surface water detected outside permanent channel requiring inspection.' : 'Standard sector inspection.'}
+                Verification Reason: {activeSectorData && activeSectorData.candidate_water_ha > 15 
+                  ? ((current.has_permanent_baseline === false || (current.total_permanent_water_ha || 0) === 0) 
+                      ? 'Large surface water extent detected requiring field survey.' 
+                      : 'High candidate water detected outside permanent channel requiring inspection.')
+                  : 'Standard sector inspection.'}
               </div>
             </div>
 
@@ -1229,13 +1258,26 @@ export default function SatelliteWorkspace() {
 
             <form onSubmit={handleUploadInference} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Select GeoTIFF File</label>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Select GeoTIFF File (Sentinel-1 SAR 2-band)</label>
                 <input 
                   type="file" 
                   accept=".tif,.tiff" 
                   onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
                   style={{ width: '100%', padding: '8px', background: '#151821', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
                 />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+                  Optional: Aligned JRC Permanent Water Baseline (.tif)
+                </label>
+                <input 
+                  type="file" 
+                  accept=".tif,.tiff" 
+                  onChange={(e) => setUploadJrcFile(e.target.files ? e.target.files[0] : null)}
+                  style={{ width: '100%', padding: '8px', background: '#151821', color: '#38bdf8', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
+                />
+                <span style={{ fontSize: '10px', color: '#64748b' }}>If omitted or misaligned, unstratified surface water will be reported without misleading flood terminology.</span>
               </div>
 
               <div>

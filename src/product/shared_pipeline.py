@@ -64,34 +64,56 @@ def parse_geotiff_metadata(tif_path: str):
             raise ValueError(f"Invalid tiepoint {tiepoint} in {os.path.basename(tif_path)}.")
         
         # Tiepoint: (i, j, k, x, y, z)
-        origin_x = tiepoint[3]
-        origin_y = tiepoint[4]
-        res_x = scale[0]
-        res_y = scale[1]
+        # Standard north-up GeoTIFFs tie pixel (0,0) to upper-left (origin_x, origin_y).
+        # If raster tiepoint offset (i, j) is nonzero, correctly calculate the actual raster origin (0, 0):
+        # origin_x = x - i * res_x, origin_y = y + j * res_y
+        tie_i = float(tiepoint[0])
+        tie_j = float(tiepoint[1])
+        res_x = float(scale[0])
+        res_y = float(scale[1])
+
+        origin_x = float(tiepoint[3]) - (tie_i * res_x)
+        origin_y = float(tiepoint[4]) + (tie_j * res_y)
         
         # Center coordinates for a 512x512 raster
         center_lon = origin_x + (512 * res_x) / 2.0
         center_lat = origin_y - (512 * res_y) / 2.0
         
-        # Check CRS via GeoKeyDirectoryTag
-        crs = "EPSG:4326"
+        # Strict CRS Validation: Strictly require explicit geographic WGS84 (EPSG:4326)
+        crs = None
         if 'GeoKeyDirectoryTag' in tags:
             geokeys = tags['GeoKeyDirectoryTag']
-            # Find 2048 (GeographicTypeGeoKey) or 3072 (ProjectedCSTypeGeoKey)
-            has_crs = False
             for idx in range(4, len(geokeys), 4):
-                if geokeys[idx] == 2048:
-                    crs = f"EPSG:{geokeys[idx+3]}"
-                    has_crs = True
-                elif geokeys[idx] == 3072:
+                key_id = geokeys[idx]
+                key_val = geokeys[idx + 3]
+                if key_id == 2048: # GeographicTypeGeoKey
+                    crs = f"EPSG:{key_val}"
+                    if key_val != 4326:
+                        raise ValueError(
+                            f"Unsupported geographic datum {crs} in {os.path.basename(tif_path)}. "
+                            "FloodProof strictly requires standard geographic WGS84 (EPSG:4326)."
+                        )
+                elif key_id == 3072: # ProjectedCSTypeGeoKey
                     raise ValueError(
-                        f"Unsupported projected CRS EPSG:{geokeys[idx+3]} in {os.path.basename(tif_path)}. "
+                        f"Unsupported projected CRS EPSG:{key_val} in {os.path.basename(tif_path)}. "
                         "FloodProof requires geographic WGS84 (EPSG:4326) coordinates."
                     )
-            if not has_crs and 'GeoAsciiParamsTag' in tags:
-                ascii_params = str(tags['GeoAsciiParamsTag'])
-                if "WGS" not in ascii_params and "4326" not in ascii_params:
-                    raise ValueError(f"Unsupported non-WGS84 datum in GeoAsciiParams: {ascii_params}")
+        
+        if not crs and 'GeoAsciiParamsTag' in tags:
+            ascii_params = str(tags['GeoAsciiParamsTag']).upper()
+            if "WGS 84" in ascii_params or "WGS84" in ascii_params or "EPSG 4326" in ascii_params:
+                crs = "EPSG:4326"
+            else:
+                raise ValueError(
+                    f"Unsupported geographic datum '{tags['GeoAsciiParamsTag']}' in {os.path.basename(tif_path)}. "
+                    "FloodProof strictly requires geographic WGS84 (EPSG:4326)."
+                )
+
+        if not crs:
+            raise ValueError(
+                f"Missing explicit CRS definition in {os.path.basename(tif_path)}. "
+                "GeoTIFF must explicitly specify EPSG:4326 (WGS84). Defaulting to unverified CRS is prohibited."
+            )
         
         # Reject coordinates outside valid lat/lon ranges [-90..90], [-180..180]
         if not (-90.0 <= center_lat <= 90.0 and -180.0 <= center_lon <= 180.0):
@@ -238,18 +260,29 @@ def run_pipeline(s1_tif_path: str, jrc_tif_path: str = None, scene_name: str = N
             if jrc_geo['crs'] != geo['crs']:
                 raise ValueError(f"JRC CRS mismatch: expected {geo['crs']}, got {jrc_geo['crs']}")
 
-            # Verify pixel resolution matches within 1e-6
-            if abs(jrc_geo['res_deg_x'] - geo['res_deg_x']) > 1e-6 or abs(jrc_geo['res_deg_y'] - geo['res_deg_y']) > 1e-6:
+            # Strict Sub-Pixel Grid Alignment:
+            # At res ~ 8.983e-5 deg (~10m), origin tolerance must be <= 0.05 pixel (~0.5m)
+            # Accumulated resolution drift across 512 pixels must be <= 0.05 pixel total
+            # max_res_delta = (0.05 * res_x) / 512 ≈ 8.77e-9 deg
+            max_origin_tol_deg = 0.05 * min(geo['res_deg_x'], geo['res_deg_y'])
+            max_res_tol_deg = (0.05 * min(geo['res_deg_x'], geo['res_deg_y'])) / 512.0
+
+            delta_res_x = abs(jrc_geo['res_deg_x'] - geo['res_deg_x'])
+            delta_res_y = abs(jrc_geo['res_deg_y'] - geo['res_deg_y'])
+            if delta_res_x > max_res_tol_deg or delta_res_y > max_res_tol_deg:
                 raise ValueError(
-                    f"JRC pixel resolution mismatch: S1=({geo['res_deg_x']}, {geo['res_deg_y']}), "
-                    f"JRC=({jrc_geo['res_deg_x']}, {jrc_geo['res_deg_y']})"
+                    f"JRC pixel resolution mismatch: S1=({geo['res_deg_x']:.10f}, {geo['res_deg_y']:.10f}), "
+                    f"JRC=({jrc_geo['res_deg_x']:.10f}, {jrc_geo['res_deg_y']:.10f}), "
+                    f"accumulated displacement across 512px exceeds 0.05 pixels ({max_res_tol_deg:.2e} deg limit)."
                 )
 
-            # Verify tiepoint origin matches within 1e-4 degrees (~11 meters)
-            if abs(jrc_geo['origin_lon'] - geo['origin_lon']) > 1e-4 or abs(jrc_geo['origin_lat'] - geo['origin_lat']) > 1e-4:
+            delta_origin_x = abs(jrc_geo['origin_lon'] - geo['origin_lon'])
+            delta_origin_y = abs(jrc_geo['origin_lat'] - geo['origin_lat'])
+            if delta_origin_x > max_origin_tol_deg or delta_origin_y > max_origin_tol_deg:
                 raise ValueError(
-                    f"JRC spatial origin mismatch: S1=({geo['origin_lon']}, {geo['origin_lat']}), "
-                    f"JRC=({jrc_geo['origin_lon']}, {jrc_geo['origin_lat']})"
+                    f"JRC spatial origin mismatch: S1=({geo['origin_lon']:.6f}, {geo['origin_lat']:.6f}), "
+                    f"JRC=({jrc_geo['origin_lon']:.6f}, {jrc_geo['origin_lat']:.6f}), "
+                    f"origin offset exceeds 0.05 pixels ({max_origin_tol_deg:.2e} deg limit)."
                 )
 
             jrc_im = tifffile.imread(jrc_path_to_check)
@@ -264,8 +297,16 @@ def run_pipeline(s1_tif_path: str, jrc_tif_path: str = None, scene_name: str = N
 
     if has_perm_baseline:
         cand_water = pred_water & (~perm_water)
+        water_metric_name = "candidate_flood_water"
+        water_label = "Candidate Flood Water"
+        p1_cat = "Priority 1: Large candidate flood-water area"
+        p2_cat = "Priority 2: Moderate candidate flood-water area"
     else:
         cand_water = pred_water
+        water_metric_name = "detected_surface_water"
+        water_label = "Detected Surface Water"
+        p1_cat = "Priority 1: Large detected surface-water area"
+        p2_cat = "Priority 2: Moderate detected surface-water area"
 
     total_cand_water_ha = round(float(cand_water.sum() * ha_per_px), 2)
     total_perm_water_ha = round(float(perm_water.sum() * ha_per_px), 2)
@@ -291,12 +332,12 @@ def run_pipeline(s1_tif_path: str, jrc_tif_path: str = None, scene_name: str = N
             
             # Enforce invariant strictly
             if s_cand > s_val or s_cand_ha > s_val_ha:
-                raise ValueError(f"Sector ({r_idx},{c_idx}) invariant failed: candidate water exceeds valid area.")
+                raise ValueError(f"Sector ({r_idx},{c_idx}) invariant failed: water extent exceeds valid area.")
 
             if s_cand_ha > 15.0:
-                cat = "Priority 1: Large candidate-water area"
+                cat = p1_cat
             elif s_cand_ha > 5.0:
-                cat = "Priority 2: Moderate candidate-water area"
+                cat = p2_cat
             else:
                 cat = "Priority 3: Minor / Dry"
                 
@@ -377,6 +418,8 @@ def run_pipeline(s1_tif_path: str, jrc_tif_path: str = None, scene_name: str = N
             'max_sector_ha': round(float(64 * 64 * ha_per_px), 2),
             'footprint_km2': round(float(512 * 512 * pixel_area_m2 / 1e6), 2)
         },
+        'has_permanent_baseline': has_perm_baseline,
+        'water_label': water_label,
         'valid_coverage_pct': valid_coverage_pct,
         'total_candidate_water_ha': total_cand_water_ha,
         'total_permanent_water_ha': total_perm_water_ha,

@@ -36,6 +36,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'No valid GeoTIFF file uploaded in request' });
     }
 
+    // Optional JRC permanent water baseline file
+    const jrcField = files.jrc_file ? (Array.isArray(files.jrc_file) ? files.jrc_file[0] : files.jrc_file) : null;
+    const jrcFilePath = jrcField && jrcField.filepath ? jrcField.filepath : 'null';
+
     // Sanitize user-provided scene name
     const rawName = fields.name ? (Array.isArray(fields.name) ? fields.name[0] : fields.name) : 'User Uploaded SAR Scene';
     const cleanName = String(rawName).replace(/[^\w\s\(\)\-\.]/g, '').trim().substring(0, 100);
@@ -49,7 +53,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       scriptPath,
       fileField.filepath,
       cleanName || 'Uploaded SAR Scene',
-      outJsonPath
+      outJsonPath,
+      jrcFilePath
     ];
 
     execFile(pythonExe, args, { maxBuffer: 10 * 1024 * 1024, timeout: 60000, shell: false }, (execErr, stdout, stderr) => {

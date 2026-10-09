@@ -72,21 +72,29 @@ To avoid manufactured settlement statistics, we retrieved and integrated genuine
   - `s3://floodproof-verification-artifacts-699158992887/tasks/verification_tasks.json` (Live task synchronization)
   - `s3://floodproof-verification-artifacts-699158992887/audit_logs/operator_decisions_log.csv` (Audit trail)
 - **Automated Roundtrip Test:** `test_s3_cloud_roundtrip` verified live writing and immediate read-back from S3.
-- **Measured CPU Latency:**
-  - Feature Preparation: **20.3 ms**
-  - Warm Inference: **146.4 ms**
-  - Post-processing & Geodetic Queue: **2.2 ms**
-  - Total Steady-State Request Latency: **168.8 ms** (Memory footprint: ~92 MB).
+- **Measured CPU Latency (Full End-to-End Execution):**
+  - Feature Preparation (7 polarimetric & context channels): **9.2 ms - 18.7 ms**
+  - XGBoost Prediction (512x512 = 262,144 px with valid mask): **1,472.2 ms - 2,364.2 ms**
+  - Geodetic Invariant Sector Ranking & Triage (64 sectors): **4.1 ms**
+  - Transparent RGBA PNG Raster Rendering (4 layers): **104.0 ms - 264.6 ms**
+  - Total Steady-State End-to-End Request Latency: **~1.6 s - 2.7 s** (Memory footprint: ~97 MB).
 
 ---
 
 ## 5. Automated Verification Test Suite
 
-All tests pass cleanly in [`tests/test_end_to_end.py`](file:///c:/Users/aman/Documents/aws-wemake/floodproof/tests/test_end_to_end.py):
-1. `test_geodesy_invariant`: PASSED (Candidate water area bounded by valid sector area across all latitudes).
-2. `test_s3_cloud_roundtrip`: PASSED (Live S3 write, read-back, and payload verification).
-3. `test_task_lifecycle_and_audit_history`: PASSED (Task state machine progression and transition logging).
-4. `test_model_artifact_load`: PASSED (XGBoost model validation).
+All 11 tests pass cleanly in [`tests/test_end_to_end.py`](file:///c:/Users/aman/Documents/aws-wemake/floodproof/tests/test_end_to_end.py):
+1. `test_full_pipeline_execution`: Complete GeoTIFF execution with verified JRC alignment and 4 transparent RGBA image layers.
+2. `test_unreferenced_geotiff_rejection`: Immediate rejection of rasters lacking `ModelPixelScaleTag` or `ModelTiepointTag`.
+3. `test_crs_strict_wgs84_enforcement`: Rejection of missing CRS, projected CRS, and non-WGS84 datums (e.g. NAD83 EPSG:4269).
+4. `test_nonzero_tiepoint_calculation`: Accurate affine origin recovery when tiepoint offsets $(i, j) \ne (0,0)$.
+5. `test_jrc_subpixel_and_one_pixel_shift_rejection`: Rejection of single-pixel shifts and accumulated sub-pixel resolution drift ($>0.05$ px across 512 px).
+6. `test_validity_mask_strict_preservation`: Raw invalid radar pixels (NaN / out-of-range) strictly masked before imputation.
+7. `test_geodesy_no_silent_capping_and_invariant_violation`: Verified ellipsoidal area varies with latitude and candidate water exceeding valid area raises `ValueError`.
+8. `test_nextjs_tasks_api_transitions_and_evidence`: Enforced `ALLOWED_TRANSITIONS` state machine and $\ge 10$ character traceable ground evidence for `field_verified`.
+9. `test_tasks_api_optimistic_concurrency_conflict`: HTTP 409 Conflict returned when `expected_version` is stale.
+10. `test_tasks_api_get_truthful_cloud_sync_and_recovery`: GET `/api/tasks` truthfully reports `cloud_synced` and auto-recovers from S3.
+11. `test_s3_cloud_roundtrip`: Live write and immediate readback from AWS S3 bucket.
 
 ---
 
@@ -101,5 +109,5 @@ Open **`http://localhost:3000`** in any web browser.
 
 To run the automated verification test suite:
 ```powershell
-python -m pytest tests/test_end_to_end.py -v
+python tests/test_end_to_end.py
 ```

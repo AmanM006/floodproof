@@ -15376,10 +15376,10 @@
     "model_version": "xgboost_sar_flood_v1.2",
     "baseline_status": "Surface-water detection only; permanent-water baseline unavailable.",
     "timings": {
-      "feature_extraction_ms": 9.19,
-      "model_prediction_ms": 1472.18,
-      "rendering_ms": 104.02,
-      "total_pipeline_ms": 1636.7
+      "feature_extraction_ms": 18.7,
+      "model_prediction_ms": 2364.16,
+      "rendering_ms": 264.58,
+      "total_pipeline_ms": 2724.39
     },
     "metadata": {
       "id": "SCENE_53374c3e",
@@ -15400,6 +15400,8 @@
       "max_sector_ha": 36.47,
       "footprint_km2": 23.34
     },
+    "has_permanent_baseline": false,
+    "water_label": "Detected Surface Water",
     "valid_coverage_pct": 100,
     "total_candidate_water_ha": 1070.3,
     "total_permanent_water_ha": 0,
@@ -15418,7 +15420,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 1.75,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 1
       },
       {
@@ -15430,7 +15432,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 1.88,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 2
       },
       {
@@ -15442,7 +15444,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 2.45,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 3
       },
       {
@@ -15454,7 +15456,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 2.73,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 4
       },
       {
@@ -15466,7 +15468,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 1.71,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 5
       },
       {
@@ -15478,7 +15480,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 1.74,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 6
       },
       {
@@ -15490,7 +15492,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 1.91,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 7
       },
       {
@@ -15502,7 +15504,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 2.79,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 8
       },
       {
@@ -15514,7 +15516,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 3.14,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 9
       },
       {
@@ -15526,7 +15528,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 1.92,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 10
       },
       {
@@ -15538,7 +15540,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 1.58,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 11
       },
       {
@@ -15550,7 +15552,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 1.89,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 12
       },
       {
@@ -15562,7 +15564,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 3.57,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 13
       },
       {
@@ -15574,7 +15576,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 2.15,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 14
       },
       {
@@ -15586,7 +15588,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 4.19,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 15
       },
       {
@@ -15598,7 +15600,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 4.41,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 16
       },
       {
@@ -15610,7 +15612,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 2.89,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 17
       },
       {
@@ -15622,7 +15624,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 3.13,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 18
       },
       {
@@ -15634,7 +15636,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 8.63,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 19
       },
       {
@@ -15646,7 +15648,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 10.67,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 20
       },
       {
@@ -15658,7 +15660,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 4.53,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 21
       },
       {
@@ -15670,7 +15672,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 11.74,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 22
       },
       {
@@ -15682,7 +15684,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 4.3,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 23
       },
       {
@@ -15694,7 +15696,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 8.24,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 24
       },
       {
@@ -15706,7 +15708,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 3.39,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 25
       },
       {
@@ -15718,7 +15720,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 4.5,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 26
       },
       {
@@ -15730,7 +15732,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 3.55,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 27
       },
       {
@@ -15742,7 +15744,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 5.11,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 28
       },
       {
@@ -15754,7 +15756,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 3.86,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 29
       },
       {
@@ -15766,7 +15768,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 4.93,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 1: Large candidate-water area",
+        "triage_category": "Priority 1: Large detected surface-water area",
         "rank": 30
       },
       {
@@ -15778,7 +15780,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 3.47,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 2: Moderate candidate-water area",
+        "triage_category": "Priority 2: Moderate detected surface-water area",
         "rank": 31
       },
       {
@@ -15790,7 +15792,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 5.23,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 2: Moderate candidate-water area",
+        "triage_category": "Priority 2: Moderate detected surface-water area",
         "rank": 32
       },
       {
@@ -15802,7 +15804,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 5.28,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 2: Moderate candidate-water area",
+        "triage_category": "Priority 2: Moderate detected surface-water area",
         "rank": 33
       },
       {
@@ -15814,7 +15816,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 5.52,
         "disagreement_alert": "High Disagreement",
-        "triage_category": "Priority 2: Moderate candidate-water area",
+        "triage_category": "Priority 2: Moderate detected surface-water area",
         "rank": 34
       },
       {
@@ -15826,7 +15828,7 @@
         "permanent_water_ha": 0,
         "disagreement_ha": 3.87,
         "disagreement_alert": "Agreement",
-        "triage_category": "Priority 2: Moderate candidate-water area",
+        "triage_category": "Priority 2: Moderate detected surface-water area",
         "rank": 35
       },
       {

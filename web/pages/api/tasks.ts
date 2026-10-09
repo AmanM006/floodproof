@@ -44,11 +44,32 @@ async function loadTasksWithS3Fallback(): Promise<{ tasks: any[]; cloud_synced: 
   return { tasks: [], cloud_synced: false };
 }
 
+async function syncToS3WithRetry(retries = 2, delayMs = 300): Promise<{ success: boolean; error: string | null }> {
+  for (let attempt = 1; attempt <= retries + 1; attempt++) {
+    try {
+      const awsArgs = ['s3', 'cp', TASKS_PATH, `s3://${S3_BUCKET}/tasks/verification_tasks.json`];
+      await execFilePromise('aws', awsArgs, { shell: false });
+      return { success: true, error: null };
+    } catch (err: any) {
+      if (attempt <= retries) {
+        await new Promise((r) => setTimeout(r, delayMs * attempt));
+      } else {
+        return { success: false, error: err.message || 'AWS S3 sync failed after retries' };
+      }
+    }
+  }
+  return { success: false, error: 'S3 sync exhausted' };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
       const { tasks, cloud_synced } = await loadTasksWithS3Fallback();
-      return res.status(200).json(tasks);
+      return res.status(200).json({
+        tasks,
+        cloud_synced,
+        total: tasks.length
+      });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }
@@ -60,6 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const chipId = String(task.chip_id || '').trim();
       const sectorId = String(task.sector_id || '').trim();
       const newStatus = String(task.status || '').trim();
+      const expectedVersion = task.expected_version !== undefined ? Number(task.expected_version) : null;
 
       if (!chipId || !sectorId || !newStatus) {
         return res.status(400).json({ error: 'Missing mandatory fields: chip_id, sector_id, status.' });
@@ -71,9 +93,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { tasks } = await loadTasksWithS3Fallback();
 
       const existingIdx = tasks.findIndex((t: any) => t.task_id === canonicalId || (t.chip_id === chipId && t.sector_id === sectorId));
-      const currentStatus = existingIdx >= 0 ? tasks[existingIdx].status : 'created';
+      const currentTask = existingIdx >= 0 ? tasks[existingIdx] : null;
+      const currentStatus = currentTask ? currentTask.status : 'created';
+      const currentVersion = currentTask ? (currentTask.version || 1) : 0;
 
-      // 1. Validate State Transition
+      // 1. Optimistic Concurrency Protection: Reject stale updates
+      if (expectedVersion !== null && currentTask && expectedVersion !== currentVersion) {
+        return res.status(409).json({
+          error: `Conflict: Task "${canonicalId}" was modified by another operator (expected version ${expectedVersion}, current version ${currentVersion}). Please reload and retry.`,
+          current_version: currentVersion,
+          task: currentTask
+        });
+      }
+
+      // 2. Validate State Transition
       const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
       if (currentStatus !== newStatus && !allowed.includes(newStatus)) {
         return res.status(400).json({
@@ -81,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      // 2. Validate Evidence Requirement
+      // 3. Validate Evidence Requirement
       if (newStatus === 'field_verified') {
         const evidenceStr = String(task.evidence || '').trim();
         if (evidenceStr.length < 10) {
@@ -149,22 +182,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fs.writeFileSync(tempPath, JSON.stringify(tasks, null, 2), 'utf-8');
       fs.renameSync(tempPath, TASKS_PATH);
 
-      // 3. AWAIT Real S3 Cloud Persistence
-      let s3Success = false;
-      let s3Error = null;
-
-      try {
-        const awsArgs = ['s3', 'cp', TASKS_PATH, `s3://${S3_BUCKET}/tasks/verification_tasks.json`];
-        await execFilePromise('aws', awsArgs, { shell: false });
-        s3Success = true;
-      } catch (err: any) {
-        s3Error = err.message || 'AWS S3 sync failed';
-        console.error('S3 sync error:', err);
-      }
+      // 4. AWAIT Real S3 Cloud Persistence with Retry
+      const { success: s3Success, error: s3Error } = await syncToS3WithRetry(2, 200);
 
       return res.status(200).json({
         success: true,
         cloud_persisted: s3Success,
+        cloud_synced: s3Success,
         cloud_error: s3Error,
         task: updatedTask,
         all_tasks: tasks

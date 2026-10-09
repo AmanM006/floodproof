@@ -1,8 +1,12 @@
-PASS: test_full_pipeline_execution
-PASS: test_unreferenced_geotiff_rejection
-PASS: test_jrc_geometric_alignment_enforcement
-PASS: test_validity_mask_strict_preservation
-PASS: test_geodesy_no_silent_capping_and_invariant_violation
-PASS: test_nextjs_tasks_api_transitions_and_evidence
-PASS: test_s3_cloud_roundtrip
-ALL 7 AUDIT REGRESSION TESTS PASSED.
+PASS: test_full_pipeline_execution
+PASS: test_unreferenced_geotiff_rejection
+PASS: test_crs_strict_wgs84_enforcement
+PASS: test_nonzero_tiepoint_calculation
+PASS: test_jrc_subpixel_and_one_pixel_shift_rejection
+PASS: test_validity_mask_strict_preservation
+PASS: test_geodesy_no_silent_capping_and_invariant_violation
+PASS: test_nextjs_tasks_api_transitions_and_evidence
+PASS: test_tasks_api_optimistic_concurrency_conflict
+PASS: test_tasks_api_get_truthful_cloud_sync_and_recovery
+PASS: test_s3_cloud_roundtrip
+ALL 11 AUDIT REGRESSION TESTS PASSED.

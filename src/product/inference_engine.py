@@ -15,15 +15,16 @@ from src.product.shared_pipeline import run_pipeline
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print(json.dumps({'error': 'Usage: python inference_engine.py <path_to_s1_tif> [scene_name] [out_json_path]'}))
+        print(json.dumps({'error': 'Usage: python inference_engine.py <path_to_s1_tif> [scene_name] [out_json_path] [jrc_tif_path]'}))
         sys.exit(1)
         
     s1_tif = sys.argv[1]
     name = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != 'null' else None
-    out_path = sys.argv[3] if len(sys.argv) > 3 else None
+    out_path = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] != 'null' else None
+    jrc_tif = sys.argv[4] if len(sys.argv) > 4 and sys.argv[4] != 'null' else None
     
     try:
-        res = run_pipeline(s1_tif, scene_name=name)
+        res = run_pipeline(s1_tif, jrc_tif_path=jrc_tif, scene_name=name)
         if out_path:
             with open(out_path, 'w') as f:
                 json.dump(res, f)
