@@ -44,5 +44,66 @@
         "notes": "Reviewed by senior coordinator"
       }
     ]
+  },
+  {
+    "task_id": "TASK_India_591317_SEC_41",
+    "chip_id": "India_591317",
+    "sector_id": "SEC_41",
+    "assigned_team": "Brahmaputra Disaster Response Unit 1",
+    "status": "assigned",
+    "notes": "Candidate water observed outside permanent levee. Dispatched for embankment integrity verification.",
+    "created_at": "2026-10-09T06:37:16.151Z",
+    "history": [
+      {
+        "transition_time": "2026-10-09T06:37:16.151Z",
+        "previous_status": "created",
+        "new_status": "assigned",
+        "notes": "Candidate water observed outside permanent levee. Dispatched for embankment integrity verification."
+      },
+      {
+        "transition_time": "2026-10-09T06:37:18.289Z",
+        "previous_status": "assigned",
+        "new_status": "assigned",
+        "notes": "Candidate water observed outside permanent levee. Dispatched for embankment integrity verification."
+      }
+    ]
+  },
+  {
+    "task_id": "TASK_India_591317_SEC_49",
+    "chip_id": "India_591317",
+    "sector_id": "SEC_49",
+    "assigned_team": "Brahmaputra Disaster Response Unit 1",
+    "status": "assigned",
+    "notes": "Candidate water observed outside permanent levee. Dispatched for embankment integrity verification.",
+    "created_at": "2026-10-09T06:37:37.823Z",
+    "history": [
+      {
+        "transition_time": "2026-10-09T06:37:37.823Z",
+        "previous_status": "created",
+        "new_status": "assigned",
+        "notes": "Candidate water observed outside permanent levee. Dispatched for embankment integrity verification."
+      }
+    ]
+  },
+  {
+    "task_id": "TASK_EVAL_TEST",
+    "chip_id": "India_591317",
+    "sector_id": "SEC_34",
+    "assigned_team": "Rapid Response 1",
+    "status": "field_verified",
+    "evidence": "Drone RGB photograph #4928 shows embankment breach at chainage 12+400",
+    "notes": "Ground team confirmed 14ha candidate water",
+    "created_at": "2026-10-09T06:44:28.586Z",
+    "actor": "FloodProof Operator",
+    "history": [
+      {
+        "transition_time": "2026-10-09T06:44:28.586Z",
+        "actor": "FloodProof Operator",
+        "previous_status": "created",
+        "new_status": "field_verified",
+        "evidence": "Drone RGB photograph #4928 shows embankment breach at chainage 12+400",
+        "notes": "Ground team confirmed 14ha candidate water"
+      }
+    ]
   }
 ]
