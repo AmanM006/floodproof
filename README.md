@@ -92,12 +92,14 @@ All tests pass cleanly in [`tests/test_end_to_end.py`](file:///c:/Users/aman/Doc
 
 ## 6. How to Run the Application
 
-To launch the full browser-based operator console:
+To launch the full browser-based Next.js + TypeScript operator workspace:
 ```powershell
-cd c:\Users\aman\Documents\aws-wemake\floodproof
-streamlit run src\product\app.py
+cd c:\Users\aman\Documents\aws-wemake\floodproof\web
+npm run dev
 ```
+Open **`http://localhost:3000`** in any web browser.
+
 To run the automated verification test suite:
 ```powershell
-python -c "import sys; sys.path.insert(0, '.'); import tests.test_end_to_end as t; t.test_geodesy_invariant(); t.test_s3_cloud_roundtrip(); t.test_task_lifecycle_and_audit_history(); t.test_model_artifact_load(); print('ALL TESTS PASSED')"
+python -m pytest tests/test_end_to_end.py -v
 ```

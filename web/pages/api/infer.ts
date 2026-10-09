@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 
 export const config = {
   api: {
@@ -36,25 +36,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'No valid GeoTIFF file uploaded in request' });
     }
 
-    const lat = fields.lat ? (Array.isArray(fields.lat) ? fields.lat[0] : fields.lat) : '26.63';
-    const lon = fields.lon ? (Array.isArray(fields.lon) ? fields.lon[0] : fields.lon) : '92.91';
-    const name = fields.name ? (Array.isArray(fields.name) ? fields.name[0] : fields.name) : 'User Uploaded SAR Scene';
+    // Sanitize user-provided scene name
+    const rawName = fields.name ? (Array.isArray(fields.name) ? fields.name[0] : fields.name) : 'User Uploaded SAR Scene';
+    const cleanName = String(rawName).replace(/[^\w\s\(\)\-\.]/g, '').trim().substring(0, 100);
 
     const scriptPath = path.join(process.cwd(), '..', 'src', 'product', 'inference_engine.py');
-    const cmd = `python "${scriptPath}" "${fileField.filepath}" ${lat} ${lon} "${name}"`;
+    const outJsonPath = path.join(uploadDir, `inference_out_${Date.now()}.json`);
 
-    exec(cmd, { maxBuffer: 10 * 1024 * 1024 }, (execErr, stdout, stderr) => {
+    // SECURE EXECUTION: execFile with argument array, shell DISABLED
+    const pythonExe = 'python';
+    const args = [
+      scriptPath,
+      fileField.filepath,
+      cleanName || 'Uploaded SAR Scene',
+      outJsonPath
+    ];
+
+    execFile(pythonExe, args, { maxBuffer: 10 * 1024 * 1024, timeout: 60000, shell: false }, (execErr, stdout, stderr) => {
       if (execErr) {
         return res.status(500).json({ 
-          error: 'Inference pipeline failure', 
+          error: 'Inference pipeline execution error', 
           details: stderr || execErr.message 
         });
       }
 
-      try {
-        const result = JSON.parse(stdout);
+      if (!fs.existsSync(outJsonPath)) {
+        return res.status(500).json({
+          error: 'Inference pipeline did not produce output file',
+          stdout,
+          stderr
+        });
+      }
 
-        // Also append into local scenes.json so the browser can immediately select it
+      try {
+        const fileContent = fs.readFileSync(outJsonPath, 'utf-8');
+        const result = JSON.parse(fileContent);
+
+        // Verify image fields contract
+        if (!result.img_sar_b64 || !result.img_cand_water_b64) {
+          return res.status(500).json({
+            error: 'Inference pipeline produced incomplete image outputs',
+            keys: Object.keys(result)
+          });
+        }
+
+        // Clean up temp json
+        fs.unlinkSync(outJsonPath);
+
+        // Append to local scenes.json so the browser can immediately select it
         const scenesPath = path.join(process.cwd(), 'data', 'scenes.json');
         if (fs.existsSync(scenesPath)) {
           const currentScenes = JSON.parse(fs.readFileSync(scenesPath, 'utf-8'));
@@ -65,9 +94,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json(result);
       } catch (parseErr: any) {
         return res.status(500).json({ 
-          error: 'Failed to parse inference engine JSON output', 
-          details: parseErr.message,
-          raw_stdout: stdout.substring(0, 500)
+          error: 'Failed to read/parse inference engine JSON result', 
+          details: parseErr.message 
         });
       }
     });

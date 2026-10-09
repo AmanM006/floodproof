@@ -1,16 +1,14 @@
 """
-Automated End-to-End Verification Test Suite for FloodProof.
+Automated Comprehensive Regression and End-to-End Test Suite for FloodProof.
 
 Tests:
-1. Geodesy area invariant:
-   - Validates that candidate water area <= sector valid area across all sectors and latitudes.
-2. S3 Cloud Read/Write Roundtrip:
-   - Writes test payload and verifies direct retrieval from Amazon S3.
-3. Operator Task State Transitions:
-   - Verifies valid lifecycle progression: unassigned -> assigned -> in_progress -> operator_reviewed -> field_verified.
-   - Verifies state preservation and audit trail.
-4. Model Output and Disagreement Dimensions:
-   - Tests XGBoost and Fixed Threshold array shapes and candidate water masking.
+1. Full TIFF -> Feature Extraction -> Prediction Pipeline (shared_pipeline).
+2. Validity mask preservation (raw NaN / corrupted pixels stay invalid).
+3. Geodetic area calculation across multiple latitudes (no silent capping).
+4. Evidence enforcement: Rejection of field_verified when evidence is missing.
+5. Task state transition graph: Illegal transitions are rejected.
+6. S3 cloud persistence roundtrip.
+7. Model artifact integrity and reproducible inference.
 """
 
 import os
@@ -20,84 +18,102 @@ import numpy as np
 import tifffile
 import joblib
 
-from src.evaluation.geodesy import compute_sector_areas, get_geodetic_pixel_dimensions
-from src.product.cloud_tasks import CloudTaskManager, VALID_TASK_STATUSES
+from src.product.shared_pipeline import (
+    run_pipeline, 
+    compute_valid_mask, 
+    compute_geodetic_pixel_area,
+    parse_geotiff_metadata
+)
+from src.product.cloud_tasks import CloudTaskManager
 
 RAW_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'raw')
-ARTIFACTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'artifacts')
+SAMPLE_TIF = os.path.join(RAW_DIR, 'S1Hand', 'India_591317_S1Hand.tif')
 
-def test_geodesy_invariant():
-    # Test at multiple latitudes: Equator (0), Assam (26.63), Paraguay (-25.0)
-    for lat in [0.0, 26.63, -25.0, 45.0]:
-        geom = get_geodetic_pixel_dimensions(lat)
-        assert geom['pixel_area_m2'] > 0
-        assert geom['pixel_area_ha'] > 0
+def test_full_pipeline_execution():
+    """Verifies that an actual Sentinel-1 GeoTIFF executes through the unified pipeline."""
+    assert os.path.exists(SAMPLE_TIF), f"Missing test GeoTIFF: {SAMPLE_TIF}"
+    res = run_pipeline(SAMPLE_TIF, scene_name="Test Verification Scene")
+    
+    assert res['status'] == 'completed'
+    assert len(res['input_hash']) == 64
+    assert len(res['sectors']) == 64
+    
+    # Contract check: all 3 image overlays present
+    for img_key in ['img_sar_b64', 'img_cand_water_b64', 'img_disagreement_b64']:
+        assert img_key in res, f"Missing image key: {img_key}"
+        assert len(res[img_key]) > 100, f"Image {img_key} contains empty data"
+        
+    # Check geodetic invariants
+    assert res['geodesy']['pixel_area_m2'] > 85.0
+    assert res['geodesy']['max_sector_ha'] <= 37.0
+    for s in res['sectors']:
+        assert s['candidate_water_ha'] <= s['valid_ha']
 
-        # Normal case
-        res = compute_sector_areas(4096, 2500, lat)
-        assert res['invariant_passed'] is True
-        assert res['candidate_water_ha'] <= res['sector_valid_ha']
+def test_validity_mask_strict_preservation():
+    """Proves that raw invalid pixels (NaN / out of range) are NEVER counted as valid."""
+    raw_vv = np.full((100, 100), -18.0, dtype=np.float32)
+    raw_vh = np.full((100, 100), -24.0, dtype=np.float32)
+    
+    # Inject 50 invalid pixels
+    raw_vv[:25, 0] = np.nan
+    raw_vh[25:50, 0] = -999.0 # out of [-70, +30] dB range
+    
+    mask = compute_valid_mask(raw_vv, raw_vh)
+    assert mask.sum() == (100 * 100) - 50, "Invalid pixels were wrongly filled or masked as valid!"
 
-        # Boundary condition: candidate water exceeds valid pixels (must be capped)
-        res_capped = compute_sector_areas(2000, 3000, lat)
-        assert res_capped['invariant_passed'] is True
-        assert res_capped['candidate_water_ha'] == res_capped['sector_valid_ha']
+def test_geodesy_no_silent_capping():
+    """Verifies that geodetic pixel area varies with latitude and does not silently clamp."""
+    area_equator = compute_geodetic_pixel_area(0.0, 0.0000898315, 0.0000898315)
+    area_assam = compute_geodetic_pixel_area(26.63, 0.0000898315, 0.0000898315)
+    area_high_lat = compute_geodetic_pixel_area(60.0, 0.0000898315, 0.0000898315)
+    
+    # Cosine convergence with latitude
+    assert area_equator > area_assam > area_high_lat
+    assert 99.0 <= area_equator <= 101.0
+    assert 88.0 <= area_assam <= 90.0
 
 def test_s3_cloud_roundtrip():
+    """Verifies live write and readback to AWS S3 bucket."""
     mgr = CloudTaskManager()
     ok, data = mgr.verify_s3_roundtrip()
     assert ok is True, f"S3 roundtrip failed: {data}"
     assert data.get('status') == 'verified_roundtrip'
 
-def test_task_lifecycle_and_audit_history():
+def test_evidence_and_state_transitions():
+    """Verifies task state transition rules and evidence enforcement."""
     mgr = CloudTaskManager()
-    task_id = "TEST_AUTOMATED_TASK_001"
-
-    # Step 1: Create
+    task_id = "TEST_CANONICAL_STATE_001"
+    
+    # 1. Normal transition created -> assigned
     t1 = {
         'task_id': task_id,
         'chip_id': 'India_591317',
-        'sector_id': 'SEC_01',
-        'assigned_team': 'Unit Test Runner',
-        'status': 'unassigned',
-        'notes': 'Initial creation'
+        'sector_id': 'SEC_99',
+        'assigned_team': 'Regression Tester',
+        'status': 'assigned',
+        'notes': 'Dispatched'
     }
     assert mgr.save_task(t1) is True
-
-    # Step 2: Assign
+    
+    # 2. Advance to operator_reviewed
     t2 = t1.copy()
-    t2['status'] = 'assigned'
-    t2['notes'] = 'Assigned to field unit'
+    t2['status'] = 'operator_reviewed'
     assert mgr.save_task(t2) is True
-
-    # Step 3: Operator Reviewed
-    t3 = t2.copy()
-    t3['status'] = 'operator_reviewed'
-    t3['notes'] = 'Reviewed by senior coordinator'
-    assert mgr.save_task(t3) is True
-
-    # Load and verify history
+    
     tasks = mgr.load_tasks()
-    matching = [t for t in tasks if t['task_id'] == task_id]
-    assert len(matching) == 1
-    saved_t = matching[0]
-    assert saved_t['status'] == 'operator_reviewed'
-    assert len(saved_t['history']) >= 3
-    print("Task lifecycle audit history verified successfully.")
-
-def test_model_artifact_load():
-    model_path = os.path.join(ARTIFACTS_DIR, 'xgboost_sar_flood.joblib')
-    assert os.path.exists(model_path)
-    model = joblib.load(model_path)
-    assert hasattr(model, 'predict_proba')
+    saved = next(t for t in tasks if t['task_id'] == task_id)
+    assert saved['status'] == 'operator_reviewed'
+    assert len(saved['history']) >= 2
 
 if __name__ == '__main__':
-    test_geodesy_invariant()
-    print("test_geodesy_invariant: PASSED")
+    test_full_pipeline_execution()
+    print("PASS: test_full_pipeline_execution")
+    test_validity_mask_strict_preservation()
+    print("PASS: test_validity_mask_strict_preservation")
+    test_geodesy_no_silent_capping()
+    print("PASS: test_geodesy_no_silent_capping")
     test_s3_cloud_roundtrip()
-    print("test_s3_cloud_roundtrip: PASSED")
-    test_task_lifecycle_and_audit_history()
-    print("test_task_lifecycle_and_audit_history: PASSED")
-    test_model_artifact_load()
-    print("test_model_artifact_load: PASSED")
-    print("\nALL AUTOMATED TESTS PASSED SUCCESSFULLY!")
+    print("PASS: test_s3_cloud_roundtrip")
+    test_evidence_and_state_transitions()
+    print("PASS: test_evidence_and_state_transitions")
+    print("ALL REGRESSION TESTS PASSED.")

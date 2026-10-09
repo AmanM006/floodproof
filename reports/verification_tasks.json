@@ -86,13 +86,13 @@
     ]
   },
   {
-    "task_id": "TASK_EVAL_TEST",
+    "task_id": "TASK_India_591317_SEC_34",
     "chip_id": "India_591317",
     "sector_id": "SEC_34",
     "assigned_team": "Rapid Response 1",
     "status": "field_verified",
-    "evidence": "Drone RGB photograph #4928 shows embankment breach at chainage 12+400",
-    "notes": "Ground team confirmed 14ha candidate water",
+    "evidence": "Drone RGB photo #4829 tag confirms 12ha breach at levee",
+    "notes": "Analyst review of evidence",
     "created_at": "2026-10-09T06:44:28.586Z",
     "actor": "FloodProof Operator",
     "history": [
@@ -103,6 +103,46 @@
         "new_status": "field_verified",
         "evidence": "Drone RGB photograph #4928 shows embankment breach at chainage 12+400",
         "notes": "Ground team confirmed 14ha candidate water"
+      },
+      {
+        "transition_time": "2026-10-09T08:52:53.632Z",
+        "actor": "Satellite Analyst",
+        "previous_status": "field_verified",
+        "new_status": "operator_reviewed",
+        "evidence": "Drone RGB photograph #4928 shows embankment breach at chainage 12+400",
+        "notes": "Analyst review of evidence"
+      },
+      {
+        "transition_time": "2026-10-09T08:52:56.420Z",
+        "actor": "Satellite Analyst",
+        "previous_status": "operator_reviewed",
+        "new_status": "field_verified",
+        "evidence": "Drone RGB photo #4829 tag confirms 12ha breach at levee",
+        "notes": ""
+      }
+    ],
+    "updated_at": "2026-10-09T08:52:56.420Z"
+  },
+  {
+    "task_id": "TEST_CANONICAL_STATE_001",
+    "chip_id": "India_591317",
+    "sector_id": "SEC_99",
+    "assigned_team": "Regression Tester",
+    "status": "operator_reviewed",
+    "notes": "Dispatched",
+    "created_at": "2026-10-09T08:56:10.146463+00:00",
+    "history": [
+      {
+        "transition_time": "2026-10-09T08:56:10.146463+00:00",
+        "previous_status": "created",
+        "new_status": "assigned",
+        "notes": "Dispatched"
+      },
+      {
+        "transition_time": "2026-10-09T08:56:12.260880+00:00",
+        "previous_status": "assigned",
+        "new_status": "operator_reviewed",
+        "notes": "Dispatched"
       }
     ]
   }
