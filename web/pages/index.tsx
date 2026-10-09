@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { 
   Layers, 
@@ -17,11 +17,16 @@ import {
   Info, 
   Sliders, 
   Eye, 
+  EyeOff,
   Search,
   Filter,
   ZoomIn,
   ZoomOut,
-  Maximize2
+  Maximize2,
+  Clock,
+  ShieldCheck,
+  User,
+  FileText
 } from 'lucide-react';
 
 interface Sector {
@@ -69,22 +74,24 @@ export default function SatelliteWorkspace() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Map layer controls
-  const [radarOpacity, setRadarOpacity] = useState<number>(100);
-  const [predictionOpacity, setPredictionOpacity] = useState<number>(75);
+  // Geographic Canvas Layer Controls
+  // Defaults: Radar 85% visible, Predictions 65% translucent, Disagreement OFF by default, Grid OFF by default
+  const [radarOpacity, setRadarOpacity] = useState<number>(85);
+  const [predictionOpacity, setPredictionOpacity] = useState<number>(65);
   const [showPermanentWater, setShowPermanentWater] = useState<boolean>(true);
-  const [showDisagreement, setShowDisagreement] = useState<boolean>(true);
-  const [showSectors, setShowSectors] = useState<boolean>(true);
+  const [showDisagreement, setShowDisagreement] = useState<boolean>(false);
+  const [showAllSectors, setShowAllSectors] = useState<boolean>(false);
   const [showPlaceLabels, setShowPlaceLabels] = useState<boolean>(true);
   const [selectedSector, setSelectedSector] = useState<string>('SEC_34');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [showLayersDropdown, setShowLayersDropdown] = useState<boolean>(false);
 
-  // Filter & Queue search
+  // Queue Search & Filter
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
 
   // Task form state
-  const [assignedCrew, setAssignedCrew] = useState<string>('Field Verification Unit Alpha');
+  const [assignedCrew, setAssignedCrew] = useState<string>('Brahmaputra Verification Team Alpha');
   const [taskStatus, setTaskStatus] = useState<string>('assigned');
   const [taskNotes, setTaskNotes] = useState<string>('Candidate water observed outside permanent river channel. Embankment inspection scheduled.');
   const [taskEvidence, setTaskEvidence] = useState<string>('');
@@ -102,9 +109,26 @@ export default function SatelliteWorkspace() {
   const [uploadName, setUploadName] = useState<string>('Sentinel-1 Verification Scene');
   const [uploading, setUploading] = useState<boolean>(false);
 
+  // Canvas viewport ref
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 600, height: 600 });
+
   useEffect(() => {
     loadScenes();
     loadTasks();
+
+    const updateSize = () => {
+      if (canvasContainerRef.current) {
+        const { clientWidth, clientHeight } = canvasContainerRef.current;
+        // Make it a clean square that fits the container with padding
+        const minDim = Math.min(clientWidth - 32, clientHeight - 48);
+        setCanvasSize({ width: Math.max(minDim, 380), height: Math.max(minDim, 380) });
+      }
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
   }, []);
 
   const loadScenes = () => {
@@ -133,7 +157,7 @@ export default function SatelliteWorkspace() {
       task_id: `TASK_${selectedKey}_${selectedSector}`,
       chip_id: selectedKey,
       sector_id: selectedSector,
-      actor: 'Satellite Analyst',
+      actor: 'Lead Satellite Analyst',
       assigned_team: assignedCrew,
       status: taskStatus,
       evidence: taskEvidence,
@@ -222,8 +246,9 @@ export default function SatelliteWorkspace() {
   const current = scenes[selectedKey];
   const meta = current.metadata;
   const activeSectorData = current.sectors.find((s) => s.id === selectedSector);
+  const activeSectorTask = tasks.find((t) => t.chip_id === selectedKey && t.sector_id === selectedSector);
 
-  // Calculate geodetic invariants dynamically based on scene latitude
+  // Dynamic geodetic scaling
   const latVal = meta.lat || 26.63;
   const a = 6378137.0;
   const b = 6356752.3142;
@@ -242,11 +267,20 @@ export default function SatelliteWorkspace() {
   // Filtered queue
   const filteredSectors = current.sectors.filter((sec) => {
     const matchesSearch = sec.id.toLowerCase().includes(searchQuery.toLowerCase());
-    if (filterSeverity === 'severe') return matchesSearch && sec.candidate_water_ha > 15;
+    if (filterSeverity === 'large') return matchesSearch && sec.candidate_water_ha > 15;
     if (filterSeverity === 'moderate') return matchesSearch && sec.candidate_water_ha > 5 && sec.candidate_water_ha <= 15;
     if (filterSeverity === 'conflict') return matchesSearch && sec.disagreement_ha > 4;
     return matchesSearch;
   });
+
+  // Calculate selected sector position (row, col)
+  const secIndex = activeSectorData ? (activeSectorData.r / 64) * 8 + (activeSectorData.c / 64) : 0;
+  const secRow = activeSectorData ? Math.floor(activeSectorData.r / 64) : 0;
+  const secCol = activeSectorData ? Math.floor(activeSectorData.c / 64) : 0;
+
+  // Real geographic placement for OSM place labels (India scene)
+  // Scene extent is approx: lat [26.63 - 0.023 to 26.63 + 0.023], lon [92.91 - 0.023 to 92.91 + 0.023]
+  const isIndia = selectedKey.startsWith('India');
 
   return (
     <div style={{ minHeight: '100vh', width: '100%', background: '#090a0d', color: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
@@ -255,7 +289,7 @@ export default function SatelliteWorkspace() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* ================= 1. RESTRAINED TOP WORKSPACE BAR ================= */}
+      {/* ================= 1. RESTRAINED WORKSPACE HEADER ================= */}
       <header style={{ 
         height: '56px', 
         borderBottom: '1px solid #1e2433', 
@@ -363,100 +397,166 @@ export default function SatelliteWorkspace() {
         </div>
       </header>
 
-      {/* ================= 2. MAIN WORKSPACE (2/3 MAP CANVAS, 1/3 INSPECTION PANEL) ================= */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 420px', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+      {/* ================= 2. MAIN WORKSPACE (2/3 FULL-HEIGHT CANVAS, 1/3 INSPECTION PANEL) ================= */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 430px', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
         
-        {/* ================= LEFT 2/3: MAP CANVAS ================= */}
-        <div style={{ background: '#0b0d13', position: 'relative', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1e2433' }}>
-          
-          {/* Floating Canvas Layer Bar */}
+        {/* ================= LEFT 2/3: FULL GEOGRAPHIC CANVAS ================= */}
+        <div 
+          ref={canvasContainerRef}
+          style={{ 
+            background: '#07080b', 
+            position: 'relative', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            borderRight: '1px solid #1e2433',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Top Left: Compact Layers Control Panel */}
           <div style={{ 
             position: 'absolute', 
             top: '16px', 
             left: '20px', 
             zIndex: 30, 
             display: 'flex', 
-            alignItems: 'center', 
-            gap: '12px', 
-            background: 'rgba(15, 18, 26, 0.92)', 
-            backdropFilter: 'blur(8px)', 
-            border: '1px solid #232a3b', 
-            padding: '8px 14px', 
-            borderRadius: '8px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
+            flexDirection: 'column',
+            gap: '8px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>Radar:</span>
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
-                value={radarOpacity} 
-                onChange={(e) => setRadarOpacity(Number(e.target.value))}
-                style={{ width: '70px', accentColor: '#2563eb', cursor: 'pointer' }}
-              />
-              <span className="font-mono" style={{ fontSize: '10px', color: '#64748b' }}>{radarOpacity}%</span>
+            {/* Primary Toggle Pill */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              background: 'rgba(15, 18, 26, 0.94)', 
+              backdropFilter: 'blur(8px)', 
+              border: '1px solid #232a3b', 
+              padding: '7px 12px', 
+              borderRadius: '8px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.5)'
+            }}>
+              <button 
+                onClick={() => setShowLayersDropdown(!showLayersDropdown)}
+                style={{ 
+                  background: 'transparent', 
+                  border: 'none', 
+                  color: '#f8fafc', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Layers size={14} color="#60a5fa" />
+                <span>Layers & Opacity</span>
+                <ChevronDown size={14} color="#94a3b8" />
+              </button>
+
+              <div style={{ height: '14px', width: '1px', background: '#232a3b' }}></div>
+
+              {/* Quick Opacity Sliders */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Radar:</span>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={radarOpacity} 
+                  onChange={(e) => setRadarOpacity(Number(e.target.value))}
+                  style={{ width: '60px', accentColor: '#2563eb', cursor: 'pointer' }}
+                />
+                <span className="font-mono" style={{ fontSize: '10px', color: '#64748b' }}>{radarOpacity}%</span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Prediction:</span>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={predictionOpacity} 
+                  onChange={(e) => setPredictionOpacity(Number(e.target.value))}
+                  style={{ width: '60px', accentColor: '#e11d48', cursor: 'pointer' }}
+                />
+                <span className="font-mono" style={{ fontSize: '10px', color: '#64748b' }}>{predictionOpacity}%</span>
+              </div>
             </div>
 
-            <div style={{ height: '14px', width: '1px', background: '#232a3b' }}></div>
+            {/* Dropdown Menu for Toggles */}
+            {showLayersDropdown && (
+              <div style={{ 
+                background: 'rgba(15, 18, 26, 0.96)', 
+                backdropFilter: 'blur(10px)', 
+                border: '1px solid #232a3b', 
+                borderRadius: '8px', 
+                padding: '12px', 
+                width: '260px',
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '10px',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.6)'
+              }}>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+                  Overlay Visibility
+                </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>Predictions:</span>
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
-                value={predictionOpacity} 
-                onChange={(e) => setPredictionOpacity(Number(e.target.value))}
-                style={{ width: '70px', accentColor: '#e11d48', cursor: 'pointer' }}
-              />
-              <span className="font-mono" style={{ fontSize: '10px', color: '#64748b' }}>{predictionOpacity}%</span>
-            </div>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#0284c7' }}></span>
+                    <span>Permanent Baseline</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={showPermanentWater} 
+                    onChange={(e) => setShowPermanentWater(e.target.checked)}
+                    style={{ accentColor: '#0284c7' }}
+                  />
+                </label>
 
-            <div style={{ height: '14px', width: '1px', background: '#232a3b' }}></div>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#d97706' }}></span>
+                    <span>Model Disagreement</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={showDisagreement} 
+                    onChange={(e) => setShowDisagreement(e.target.checked)}
+                    style={{ accentColor: '#d97706' }}
+                  />
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8', cursor: 'pointer' }}>
-              <input 
-                type="checkbox" 
-                checked={showPermanentWater} 
-                onChange={(e) => setShowPermanentWater(e.target.checked)}
-                style={{ accentColor: '#0284c7' }}
-              />
-              Permanent Baseline
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', border: '1px solid #38bdf8' }}></span>
+                    <span>All Sectors Grid</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={showAllSectors} 
+                    onChange={(e) => setShowAllSectors(e.target.checked)}
+                    style={{ accentColor: '#38bdf8' }}
+                  />
+                </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8', cursor: 'pointer' }}>
-              <input 
-                type="checkbox" 
-                checked={showDisagreement} 
-                onChange={(e) => setShowDisagreement(e.target.checked)}
-                style={{ accentColor: '#d97706' }}
-              />
-              Disagreement
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8', cursor: 'pointer' }}>
-              <input 
-                type="checkbox" 
-                checked={showSectors} 
-                onChange={(e) => setShowSectors(e.target.checked)}
-                style={{ accentColor: '#2563eb' }}
-              />
-              Sectors Grid
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8', cursor: 'pointer' }}>
-              <input 
-                type="checkbox" 
-                checked={showPlaceLabels} 
-                onChange={(e) => setShowPlaceLabels(e.target.checked)}
-                style={{ accentColor: '#10b981' }}
-              />
-              Place Context
-            </label>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <MapPin size={12} color="#10b981" />
+                    <span>Place Context</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={showPlaceLabels} 
+                    onChange={(e) => setShowPlaceLabels(e.target.checked)}
+                    style={{ accentColor: '#10b981' }}
+                  />
+                </label>
+              </div>
+            )}
           </div>
 
-          {/* Floating Zoom & Fit Controls */}
+          {/* Top Right: Zoom & Reset Controls */}
           <div style={{ 
             position: 'absolute', 
             top: '16px', 
@@ -472,14 +572,14 @@ export default function SatelliteWorkspace() {
             borderRadius: '6px' 
           }}>
             <button 
-              onClick={() => setZoomLevel((z) => Math.min(z + 0.2, 2.0))}
+              onClick={() => setZoomLevel((z) => Math.min(z + 0.25, 2.5))}
               title="Zoom In"
               style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
             >
               <ZoomIn size={16} />
             </button>
             <button 
-              onClick={() => setZoomLevel((z) => Math.max(z - 0.2, 0.8))}
+              onClick={() => setZoomLevel((z) => Math.max(z - 0.25, 0.75))}
               title="Zoom Out"
               style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
             >
@@ -487,35 +587,35 @@ export default function SatelliteWorkspace() {
             </button>
             <button 
               onClick={() => setZoomLevel(1)}
-              title="Reset View"
+              title="Fit to Scene"
               style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
             >
               <Maximize2 size={16} />
             </button>
           </div>
 
-          {/* Map Viewer Viewport */}
+          {/* Central Geographic Canvas (Auto-Fitting Viewport) */}
           <div style={{ 
             flex: 1, 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center', 
             overflow: 'hidden', 
-            position: 'relative' 
+            padding: '16px'
           }}>
             <div style={{ 
               position: 'relative', 
-              width: '560px', 
-              height: '560px', 
+              width: `${canvasSize.width}px`, 
+              height: `${canvasSize.height}px`, 
               transform: `scale(${zoomLevel})`, 
               transition: 'transform 0.15s ease-out',
               borderRadius: '4px',
               overflow: 'hidden',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
-              background: '#07090e'
+              boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+              background: '#040507'
             }}>
               
-              {/* Layer 1: SAR Base Backscatter Raster */}
+              {/* Layer 1: SAR Base Backscatter (Translucent or Solid based on Slider) */}
               <img 
                 src={`data:image/png;base64,${current.img_sar_b64}`}
                 alt="SAR Base Raster"
@@ -546,7 +646,7 @@ export default function SatelliteWorkspace() {
                 }}
               />
 
-              {/* Layer 3: Model Disagreement Overlay */}
+              {/* Layer 3: Model Disagreement Overlay (Conditional) */}
               {showDisagreement && (
                 <img 
                   src={`data:image/png;base64,${current.img_disagreement_b64}`}
@@ -558,50 +658,54 @@ export default function SatelliteWorkspace() {
                     width: '100%', 
                     height: '100%', 
                     objectFit: 'contain', 
-                    opacity: (predictionOpacity / 100) * 0.8,
+                    opacity: (predictionOpacity / 100) * 0.85,
                     mixBlendMode: 'screen' 
                   }}
                 />
               )}
 
-              {/* Layer 4: Interactive 8x8 Sectors Grid Overlay */}
-              {showSectors && (
-                <div style={{ 
-                  position: 'absolute', 
-                  top: 0, 
-                  left: 0, 
-                  width: '100%', 
-                  height: '100%', 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(8, 1fr)', 
-                  gridTemplateRows: 'repeat(8, 1fr)',
-                  pointerEvents: 'auto'
-                }}>
-                  {Array.from({ length: 64 }).map((_, i) => {
-                    const secId = `SEC_${i + 1}`;
-                    const secData = current.sectors.find((s) => s.id === secId);
-                    const isSelected = selectedSector === secId;
+              {/* Layer 4: Interactive 8x8 Grid (All Sectors or Just Selected Sector) */}
+              <div style={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                width: '100%', 
+                height: '100%', 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(8, 1fr)', 
+                gridTemplateRows: 'repeat(8, 1fr)',
+                pointerEvents: 'auto'
+              }}>
+                {Array.from({ length: 64 }).map((_, i) => {
+                  const secId = `SEC_${i + 1}`;
+                  const secData = current.sectors.find((s) => s.id === secId);
+                  const isSelected = selectedSector === secId;
 
-                    return (
-                      <div 
-                        key={secId}
-                        onClick={() => setSelectedSector(secId)}
-                        title={`${secId}: ${secData?.candidate_water_ha || 0} ha candidate water`}
-                        style={{ 
-                          border: isSelected ? '2px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-                          background: isSelected 
-                            ? 'rgba(56, 189, 248, 0.22)' 
-                            : (secData && secData.candidate_water_ha > 15 
-                                ? 'rgba(225, 29, 72, 0.12)' 
-                                : 'transparent'),
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          justifyContent: 'flex-start',
-                          padding: '2px 4px',
-                          transition: 'background-color 0.15s'
-                        }}
-                      >
+                  // Render boundary only if grid is on OR it's the selected sector
+                  return (
+                    <div 
+                      key={secId}
+                      onClick={() => setSelectedSector(secId)}
+                      title={`${secId}: ${secData?.candidate_water_ha || 0} ha candidate water`}
+                      style={{ 
+                        border: isSelected 
+                          ? '2.5px solid #38bdf8' 
+                          : (showAllSectors ? '1px solid rgba(255, 255, 255, 0.08)' : 'none'),
+                        background: isSelected 
+                          ? 'rgba(56, 189, 248, 0.2)' 
+                          : (showAllSectors && secData && secData.candidate_water_ha > 15 
+                              ? 'rgba(225, 29, 72, 0.1)' 
+                              : 'transparent'),
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'flex-start',
+                        padding: '2px 4px',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      {/* Show number badge if grid is toggled OR if it's the selected sector */}
+                      {(showAllSectors || isSelected) && (
                         <span style={{ 
                           fontSize: '10px', 
                           fontWeight: '800', 
@@ -615,23 +719,50 @@ export default function SatelliteWorkspace() {
                         }}>
                           {i + 1}
                         </span>
-                      </div>
-                    );
-                  })}
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Anchored Callout over Selected Sector */}
+              {activeSectorData && (
+                <div style={{ 
+                  position: 'absolute', 
+                  top: `${(secRow / 8) * 100 + 4}%`, 
+                  left: `${(secCol / 8) * 100 + 4}%`, 
+                  zIndex: 25,
+                  background: 'rgba(15, 18, 26, 0.92)',
+                  backdropFilter: 'blur(6px)',
+                  border: '1px solid #38bdf8',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  pointerEvents: 'none',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.6)'
+                }}>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#38bdf8', fontFamily: 'JetBrains Mono' }}>
+                    {selectedSector} (Rank #{activeSectorData.rank})
+                  </div>
+                  <div style={{ fontSize: '9px', color: '#f43f5e' }}>
+                    {activeSectorData.candidate_water_ha} ha candidate water
+                  </div>
                 </div>
               )}
 
-              {/* Layer 5: Real OSM Place Labels Context */}
-              {showPlaceLabels && (
+              {/* Layer 5: Place Context Positioned on Real Coordinates */}
+              {showPlaceLabels && isIndia && (
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-                  <div style={{ position: 'absolute', top: '18%', right: '28%', background: 'rgba(15, 18, 26, 0.85)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#e2e8f0', border: '1px solid #232a3b' }}>
-                    Panpur (Village)
+                  {/* Panpur Village: ~26.678N, 92.937E -> Top Right */}
+                  <div style={{ position: 'absolute', top: '16%', right: '22%', background: 'rgba(15, 18, 26, 0.88)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#e2e8f0', border: '1px solid #232a3b' }}>
+                    Panpur Village
                   </div>
-                  <div style={{ position: 'absolute', bottom: '26%', right: '35%', background: 'rgba(15, 18, 26, 0.85)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#e2e8f0', border: '1px solid #232a3b' }}>
-                    Silghat (Embankment)
+                  {/* Silghat Embankment: ~26.601N, 92.926E -> Bottom Right */}
+                  <div style={{ position: 'absolute', bottom: '22%', right: '32%', background: 'rgba(15, 18, 26, 0.88)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#e2e8f0', border: '1px solid #232a3b' }}>
+                    Silghat Embankment
                   </div>
-                  <div style={{ position: 'absolute', top: '48%', left: '16%', background: 'rgba(15, 18, 26, 0.85)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#93c5fd', border: '1px solid #1e3a8a' }}>
-                    Brahmaputra River Channel
+                  {/* River Channel */}
+                  <div style={{ position: 'absolute', top: '44%', left: '16%', background: 'rgba(15, 18, 26, 0.88)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#93c5fd', border: '1px solid #1e3a8a' }}>
+                    Brahmaputra Main Channel
                   </div>
                 </div>
               )}
@@ -639,7 +770,7 @@ export default function SatelliteWorkspace() {
             </div>
           </div>
 
-          {/* Bottom Canvas Footer: Legend & Map Scale */}
+          {/* Bottom Canvas Footer: Persistent Legend, Scale & Invalid Coverage */}
           <div style={{ 
             height: '42px', 
             background: '#0d1017', 
@@ -652,27 +783,29 @@ export default function SatelliteWorkspace() {
             color: '#94a3b8'
           }}>
             {/* Legend items */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ height: '8px', width: '8px', borderRadius: '2px', background: '#e11d48', display: 'inline-block' }}></span>
-                <span>Candidate Water (Outside baseline)</span>
+                <span>Candidate Water</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ height: '8px', width: '8px', borderRadius: '2px', background: '#0284c7', display: 'inline-block' }}></span>
-                <span>Permanent Water (JRC Baseline)</span>
+                <span>Permanent Water Baseline</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ height: '8px', width: '8px', borderRadius: '2px', background: '#d97706', display: 'inline-block' }}></span>
-                <span>Model Disagreement (Triage suggested)</span>
+                <span>Model Disagreement</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ height: '8px', width: '8px', borderRadius: '2px', border: '1px solid #38bdf8', display: 'inline-block' }}></span>
-                <span>Selected Sector ({selectedSector})</span>
+                <span style={{ height: '8px', width: '8px', borderRadius: '2px', border: '1.5px solid #38bdf8', display: 'inline-block' }}></span>
+                <span>Selected: {selectedSector}</span>
               </div>
             </div>
 
-            {/* Scale indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#64748b' }}>
+            {/* Coverage & Scale */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#64748b' }}>
+              <span>Valid Coverage: <strong style={{ color: '#e2e8f0' }}>{current.valid_coverage_pct}%</strong></span>
+              <span>•</span>
               <span className="font-mono">Footprint: 4.58 km × 5.10 km (23.34 km²)</span>
               <span>•</span>
               <span className="font-mono">{pixelAreaM2} m²/px</span>
@@ -686,7 +819,7 @@ export default function SatelliteWorkspace() {
           
           {/* Section 1: Scene Overview */}
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2433' }}>
-            <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
               Scene Details
             </div>
             <div style={{ fontSize: '14px', fontWeight: '600', color: '#f8fafc', marginBottom: '4px' }}>
@@ -696,32 +829,32 @@ export default function SatelliteWorkspace() {
               <MapPin size={13} /> {meta.region} ({meta.lat}°N, {meta.lon}°E)
             </div>
 
-            {/* Top stats pills */}
+            {/* Stats pills */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '12px' }}>
               <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
                 <div style={{ fontSize: '10px', color: '#94a3b8' }}>Candidate Water</div>
-                <div className="font-mono" style={{ fontSize: '15px', fontWeight: '700', color: '#f43f5e', marginTop: '2px' }}>
+                <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: '#f43f5e', marginTop: '2px' }}>
                   {current.total_candidate_water_ha} ha
                 </div>
               </div>
 
               <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
-                <div style={{ fontSize: '10px', color: '#94a3b8' }}>Permanent Baseline</div>
-                <div className="font-mono" style={{ fontSize: '15px', fontWeight: '700', color: '#38bdf8', marginTop: '2px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8' }}>Permanent Base</div>
+                <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: '#38bdf8', marginTop: '2px' }}>
                   {current.total_permanent_water_ha} ha
                 </div>
               </div>
 
               <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
                 <div style={{ fontSize: '10px', color: '#94a3b8' }}>Disagreement</div>
-                <div className="font-mono" style={{ fontSize: '15px', fontWeight: '700', color: '#f59e0b', marginTop: '2px' }}>
+                <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: '#f59e0b', marginTop: '2px' }}>
                   {current.total_disagreement_ha} ha
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section 2: Sector Queue & Verification Priority */}
+          {/* Section 2: Verification Queue with Task Status & Reason */}
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2433' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -737,10 +870,10 @@ export default function SatelliteWorkspace() {
                   All
                 </button>
                 <button 
-                  onClick={() => setFilterSeverity('severe')}
-                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'severe' ? '#e11d48' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  onClick={() => setFilterSeverity('large')}
+                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'large' ? '#e11d48' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                 >
-                  Severe
+                  Large Area
                 </button>
                 <button 
                   onClick={() => setFilterSeverity('conflict')}
@@ -763,10 +896,12 @@ export default function SatelliteWorkspace() {
               />
             </div>
 
-            {/* Scrollable Queue List */}
+            {/* Queue rows */}
             <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {filteredSectors.slice(0, 10).map((sec) => {
                 const isSelected = selectedSector === sec.id;
+                const secTask = tasks.find((t) => t.chip_id === selectedKey && t.sector_id === sec.id);
+
                 return (
                   <div 
                     key={sec.id}
@@ -788,6 +923,17 @@ export default function SatelliteWorkspace() {
                         <span className="font-mono" style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#38bdf8' : '#e2e8f0' }}>
                           #{sec.rank} {sec.id}
                         </span>
+                        {secTask && (
+                          <span style={{ 
+                            fontSize: '9px', 
+                            padding: '1px 5px', 
+                            borderRadius: '3px',
+                            background: secTask.status === 'field_verified' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(37, 99, 235, 0.15)',
+                            color: secTask.status === 'field_verified' ? '#10b981' : '#60a5fa'
+                          }}>
+                            {secTask.status}
+                          </span>
+                        )}
                         {sec.disagreement_ha > 4 && (
                           <span style={{ fontSize: '9px', background: 'rgba(217, 119, 6, 0.15)', color: '#d97706', padding: '1px 4px', borderRadius: '2px' }}>
                             Conflict
@@ -795,7 +941,7 @@ export default function SatelliteWorkspace() {
                         )}
                       </div>
                       <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
-                        Sector Extent: {sec.valid_ha} ha
+                        {sec.candidate_water_ha > 15 ? 'Large candidate-water area' : 'Moderate candidate-water extent'}
                       </div>
                     </div>
 
@@ -810,27 +956,30 @@ export default function SatelliteWorkspace() {
             </div>
           </div>
 
-          {/* Section 3: Selected Sector & Task Assignment */}
+          {/* Section 3: Selected Sector Details, Evidence & Assignment */}
           <div style={{ padding: '16px 20px', flex: 1 }}>
             <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-              Sector Inspection & Task Assignment
+              Selected Sector & Evidence
             </div>
 
-            {/* Selected Sector Summary Card */}
+            {/* Summary card */}
             <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="font-mono" style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>{selectedSector}</span>
-                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Rank #{activeSectorData?.rank || '-'} in Queue</span>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Rank #{activeSectorData?.rank || '-'}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px', fontSize: '11px' }}>
                 <div>Candidate Water: <strong style={{ color: '#f43f5e' }}>{activeSectorData?.candidate_water_ha || 0} ha</strong></div>
                 <div>Permanent Water: <strong style={{ color: '#38bdf8' }}>{activeSectorData?.permanent_water_ha || 0} ha</strong></div>
                 <div>Model Disagreement: <strong style={{ color: '#f59e0b' }}>{activeSectorData?.disagreement_ha || 0} ha</strong></div>
-                <div>Max Sector Extent: <strong style={{ color: '#94a3b8' }}>{activeSectorData?.valid_ha || maxSectorHa} ha</strong></div>
+                <div>Sector Extent: <strong style={{ color: '#94a3b8' }}>{activeSectorData?.valid_ha || maxSectorHa} ha</strong></div>
+              </div>
+              <div style={{ marginTop: '8px', fontSize: '10px', color: '#64748b', borderTop: '1px solid #1e2433', paddingTop: '6px' }}>
+                Verification Reason: {activeSectorData && activeSectorData.candidate_water_ha > 15 ? 'High surface water detected outside permanent river channel requiring breach inspection.' : 'Standard operational sector inspection.'}
               </div>
             </div>
 
-            {/* Form */}
+            {/* Task Form */}
             <form onSubmit={handleSaveTask} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
                 <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Assigned Verification Team</label>
@@ -911,7 +1060,7 @@ export default function SatelliteWorkspace() {
             </form>
           </div>
 
-          {/* Section 4: Expandable Technical Telemetry Accordion */}
+          {/* Section 4: Expandable Technical Geodesy & Metrics */}
           <div style={{ borderTop: '1px solid #1e2433' }}>
             <button 
               onClick={() => setShowTechDetails(!showTechDetails)}
@@ -937,7 +1086,7 @@ export default function SatelliteWorkspace() {
               <div style={{ padding: '0 20px 16px', fontSize: '11px', color: '#94a3b8', lineHeight: '1.6' }}>
                 <div>• Reference Ellipsoid: <strong>WGS84</strong></div>
                 <div>• Scene Latitude: <strong>{meta.lat}°N</strong></div>
-                <div>• Calculated Pixel Footprint: <strong>{pixelAreaM2} m²/px</strong></div>
+                <div>• Calculated Pixel Scale: <strong>{pixelAreaM2} m²/px</strong></div>
                 <div>• Sector Capacity Invariant: <strong>≤ {maxSectorHa} ha</strong></div>
                 <div>• Model Architecture: <strong>XGBoost Gradient Boosted Trees (v1.2)</strong></div>
                 <div>• S3 Destination: <code>s3://floodproof-verification-artifacts-699158992887</code></div>
