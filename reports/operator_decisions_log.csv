@@ -1,2 +1,4 @@
 timestamp,chip_id,sector_id,operator_decision,notes
 2026-10-08T21:39:48.892674+00:00,India_900498,SEC_02,Confirmed Dispatch,Significant non-permanent inundation observed near road corridor.
+2026-10-09T05:19:41.226921+00:00,India_591317,SEC_01,CONFIRM_DISPATCH,High non-permanent flood extent confirmed; ground team assigned to check access embankment.,False
+2026-10-09T05:19:43.090305+00:00,India_591317,SEC_08,NEEDS_FIELD_CHECK,Model disagreement present along agricultural border; physical verification required.,False

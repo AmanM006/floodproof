@@ -1,0 +1,17 @@
+split,model,chips,valid_pixels,water_pixels,pooled_tp,pooled_fp,pooled_fn,pooled_iou,mean_per_chip_iou,pooled_precision,mean_per_chip_precision,pooled_recall,mean_per_chip_recall,pooled_f1,mean_per_chip_f1,pooled_accuracy
+Validation (Sri Lanka),Fixed SAR Threshold,9,2195101,175035,38711,16444,136324,0.2022,0.1466,0.7019,0.4157,0.2212,0.16,0.3363,0.2122,0.9304
+Validation (Sri Lanka),Adaptive Otsu Threshold,9,2195101,175035,158240,680160,16795,0.185,0.1896,0.1887,0.1972,0.904,0.8061,0.3123,0.2434,0.6825
+Validation (Sri Lanka),XGBoost SAR Classifier,9,2195101,175035,138519,150696,36516,0.4253,0.2702,0.4789,0.3096,0.7914,0.5082,0.5967,0.3638,0.9147
+Validation (Sri Lanka),Compact U-Net (PyTorch),9,2195101,175035,9718,335,165317,0.0554,0.0416,0.9667,0.4755,0.0555,0.0417,0.105,0.071,0.9245
+Test Event (India - All 18 chips),Fixed SAR Threshold,18,4019260,798510,460995,46051,337515,0.5458,0.2842,0.9092,0.709,0.5773,0.3022,0.7062,0.3761,0.9046
+Test Event (India - All 18 chips),Adaptive Otsu Threshold,18,4019260,798510,639667,938842,158843,0.3682,0.31,0.4052,0.3662,0.8011,0.7327,0.5382,0.3935,0.7269
+Test Event (India - All 18 chips),XGBoost SAR Classifier,18,4019260,798510,633379,160446,165131,0.6605,0.4241,0.7979,0.5523,0.7932,0.5457,0.7955,0.5378,0.919
+Test Event (India - All 18 chips),Compact U-Net (PyTorch),18,4019260,798510,49161,5888,749349,0.0611,0.0547,0.893,0.6912,0.0616,0.0549,0.1152,0.1,0.8121
+"Test Event (India - 17 Untouched chips, excl. India_900498)",Fixed SAR Threshold,17,3757268,674557,381231,41358,293326,0.5325,0.2644,0.9021,0.6951,0.5652,0.2822,0.695,0.3532,0.9109
+"Test Event (India - 17 Untouched chips, excl. India_900498)",Adaptive Otsu Threshold,17,3757268,674557,538949,921101,135608,0.3378,0.2864,0.3691,0.3378,0.799,0.7281,0.505,0.3677,0.7188
+"Test Event (India - 17 Untouched chips, excl. India_900498)",XGBoost SAR Classifier,17,3757268,674557,520656,138877,153901,0.6401,0.4034,0.7894,0.5354,0.7718,0.5243,0.7805,0.518,0.9221
+"Test Event (India - 17 Untouched chips, excl. India_900498)",Compact U-Net (PyTorch),17,3757268,674557,34642,4808,639915,0.051,0.051,0.8781,0.6771,0.0514,0.0513,0.097,0.0936,0.8284
+Test Event (Paraguay - 12 chips),Fixed SAR Threshold,12,2781910,214011,142410,32785,71601,0.577,0.4207,0.8129,0.6561,0.6654,0.4747,0.7318,0.4961,0.9625
+Test Event (Paraguay - 12 chips),Adaptive Otsu Threshold,12,2781910,214011,144441,596552,69570,0.1782,0.2426,0.1949,0.2592,0.6749,0.7092,0.3025,0.305,0.7606
+Test Event (Paraguay - 12 chips),XGBoost SAR Classifier,12,2781910,214011,133617,180816,80394,0.3384,0.3667,0.4249,0.4131,0.6243,0.6461,0.5057,0.4739,0.9061
+Test Event (Paraguay - 12 chips),Compact U-Net (PyTorch),12,2781910,214011,9589,2881,204422,0.0442,0.0552,0.769,0.6264,0.0448,0.0591,0.0847,0.0974,0.9255
