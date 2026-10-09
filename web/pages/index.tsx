@@ -1187,6 +1187,81 @@ export default function SatelliteWorkspace() {
                 {isSaving ? 'Persisting to S3...' : 'Save Task & Persist'}
               </button>
             </form>
+
+            {/* Task Verification History & Audit Trail */}
+            {(() => {
+              const activeTask = tasks.find((t) => t.chip_id === selectedKey && t.sector_id === selectedSector);
+              if (!activeTask || !activeTask.history || activeTask.history.length === 0) return null;
+
+              const handleExportHistory = () => {
+                const blob = new Blob([JSON.stringify(activeTask, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `audit_trail_${activeTask.task_id || activeTask.sector_id}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              };
+
+              return (
+                <div style={{ marginTop: '14px', background: '#11141c', border: '1px solid #1e2433', borderRadius: '6px', padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase' }}>
+                      Verification Audit Trail (v{activeTask.version || 1})
+                    </div>
+                    <button
+                      onClick={handleExportHistory}
+                      style={{
+                        padding: '3px 8px',
+                        background: '#1e2433',
+                        color: '#38bdf8',
+                        border: '1px solid #2d3748',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Download size={11} />
+                      Export History
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
+                    {activeTask.history.map((h: any, idx: number) => {
+                      const isField = h.new_status === 'field_verified';
+                      const isAnalyst = h.new_status === 'operator_reviewed';
+                      return (
+                        <div key={idx} style={{ fontSize: '10px', padding: '6px 8px', background: '#161a24', borderRadius: '4px', borderLeft: isField ? '3px solid #10b981' : isAnalyst ? '3px solid #38bdf8' : '3px solid #64748b' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#e2e8f0', fontWeight: '600' }}>
+                            <span>{h.previous_status} → {h.new_status}</span>
+                            <span style={{ color: isField ? '#10b981' : isAnalyst ? '#38bdf8' : '#94a3b8', fontSize: '9px', textTransform: 'uppercase' }}>
+                              {isField ? '[GROUND VERIFICATION]' : isAnalyst ? '[HISTORICAL ANALYSIS]' : '[DISPATCH]'}
+                            </span>
+                          </div>
+                          {h.evidence && (
+                            <div style={{ color: '#10b981', marginTop: '2px', wordBreak: 'break-word' }}>
+                              Evidence: {h.evidence}
+                            </div>
+                          )}
+                          {h.notes && (
+                            <div style={{ color: '#94a3b8', marginTop: '1px' }}>
+                              Notes: {h.notes}
+                            </div>
+                          )}
+                          <div style={{ color: '#64748b', fontSize: '9px', marginTop: '2px' }}>
+                            Actor: {h.actor || 'System'} • {new Date(h.transition_time).toLocaleTimeString()}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Section 4: Expandable Technical Geodesy & Metrics */}
