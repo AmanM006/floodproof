@@ -603,10 +603,15 @@ export default function SatelliteWorkspace() {
                         }}
                       >
                         <span style={{ 
-                          fontSize: '8px', 
-                          fontWeight: '600', 
-                          color: isSelected ? '#38bdf8' : 'rgba(255,255,255,0.4)',
-                          fontFamily: 'JetBrains Mono'
+                          fontSize: '10px', 
+                          fontWeight: '800', 
+                          color: '#000000', 
+                          background: isSelected ? '#38bdf8' : 'rgba(255, 255, 255, 0.85)',
+                          padding: '1px 4px',
+                          borderRadius: '3px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                          fontFamily: 'JetBrains Mono',
+                          lineHeight: 1
                         }}>
                           {i + 1}
                         </span>
