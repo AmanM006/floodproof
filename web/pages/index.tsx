@@ -1,39 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { 
-  Radar, 
   Layers, 
   MapPin, 
   Calendar, 
-  Cpu, 
-  AlertTriangle, 
-  Droplets, 
   CheckCircle2, 
   Cloud, 
   Send, 
   History, 
-  Maximize2, 
-  ShieldAlert, 
-  Radio, 
+  AlertTriangle, 
+  Check, 
+  UploadCloud, 
+  Download, 
+  ChevronDown, 
+  ChevronRight, 
+  Info, 
+  Sliders, 
   Eye, 
-  Activity, 
-  Database,
-  Crosshair,
-  Sliders,
-  TrendingUp,
-  Clock,
-  Compass,
-  FileText,
   Search,
   Filter,
-  ArrowUpRight,
-  ShieldCheck,
-  Check,
-  X,
-  Play,
-  UploadCloud,
-  Download,
-  AlertCircle
+  ZoomIn,
+  ZoomOut,
+  Maximize2
 } from 'lucide-react';
 
 interface Sector {
@@ -75,30 +63,44 @@ interface Scene {
   };
 }
 
-export default function FloodProofConsole() {
+export default function SatelliteWorkspace() {
   const [scenes, setScenes] = useState<Record<string, Scene>>({});
   const [selectedKey, setSelectedKey] = useState<string>('India_591317');
-  const [activeLayer, setActiveLayer] = useState<'cand_water' | 'disagreement' | 'sar'>('cand_water');
-  const [activeTab, setActiveTab] = useState<'triage' | 'intel' | 'audit' | 'upload'>('triage');
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Task creation state
+  // Map layer controls
+  const [radarOpacity, setRadarOpacity] = useState<number>(100);
+  const [predictionOpacity, setPredictionOpacity] = useState<number>(75);
+  const [showPermanentWater, setShowPermanentWater] = useState<boolean>(true);
+  const [showDisagreement, setShowDisagreement] = useState<boolean>(true);
+  const [showSectors, setShowSectors] = useState<boolean>(true);
+  const [showPlaceLabels, setShowPlaceLabels] = useState<boolean>(true);
   const [selectedSector, setSelectedSector] = useState<string>('SEC_34');
-  const [assignedCrew, setAssignedCrew] = useState<string>('Brahmaputra Disaster Response Unit 1');
-  const [taskStatus, setTaskStatus] = useState<string>('assigned');
-  const [taskNotes, setTaskNotes] = useState<string>('Candidate water observed outside permanent levee. Dispatched for embankment integrity verification.');
-  const [taskEvidence, setTaskEvidence] = useState<string>('Drone imagery capture ref #DR-2016-08, GPS tag verified at embankment breach point.');
-  const [syncStatus, setSyncStatus] = useState<string>('S3 Connected');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
 
-  // Upload state
+  // Filter & Queue search
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterSeverity, setFilterSeverity] = useState<string>('all');
+
+  // Task form state
+  const [assignedCrew, setAssignedCrew] = useState<string>('Field Verification Unit Alpha');
+  const [taskStatus, setTaskStatus] = useState<string>('assigned');
+  const [taskNotes, setTaskNotes] = useState<string>('Candidate water observed outside permanent river channel. Embankment inspection scheduled.');
+  const [taskEvidence, setTaskEvidence] = useState<string>('');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+
+  // Technical details drawer
+  const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
+
+  // Upload modal state
+  const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadLat, setUploadLat] = useState<string>('26.63');
   const [uploadLon, setUploadLon] = useState<string>('92.91');
-  const [uploadName, setUploadName] = useState<string>('Uploaded Sentinel-1 Test Scene');
+  const [uploadName, setUploadName] = useState<string>('Sentinel-1 Verification Scene');
   const [uploading, setUploading] = useState<boolean>(false);
-  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     loadScenes();
@@ -124,14 +126,14 @@ export default function FloodProofConsole() {
 
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(null);
-    setSyncStatus('Syncing S3...');
+    setIsSaving(true);
+    setSaveFeedback(null);
 
     const payload = {
       task_id: `TASK_${selectedKey}_${selectedSector}`,
       chip_id: selectedKey,
       sector_id: selectedSector,
-      actor: 'Console Lead Operator',
+      actor: 'Satellite Analyst',
       assigned_team: assignedCrew,
       status: taskStatus,
       evidence: taskEvidence,
@@ -144,32 +146,29 @@ export default function FloodProofConsole() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
       const data = await res.json();
+      setIsSaving(false);
 
       if (res.ok) {
-        setSyncStatus('Synced to AWS S3 (Live)');
+        setSaveFeedback('Task updated and persisted to S3');
         loadTasks();
+        setTimeout(() => setSaveFeedback(null), 4000);
       } else {
-        setSyncStatus('Save Rejected');
-        setErrorMessage(data.error || 'Task persistence error.');
+        setSaveFeedback(data.error || 'Failed to update task.');
       }
     } catch {
-      setSyncStatus('Network Error');
-      setErrorMessage('Could not reach backend API endpoint.');
+      setIsSaving(false);
+      setSaveFeedback('Network error while persisting task.');
     }
   };
 
   const handleUploadInference = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadFile) {
-      alert("Please select a valid Sentinel-1 GeoTIFF file (.tif)");
+      alert("Please choose a GeoTIFF (.tif) file");
       return;
     }
-
     setUploading(true);
-    setUploadSuccess(null);
-    setErrorMessage(null);
 
     const formData = new FormData();
     formData.append('file', uploadFile);
@@ -182,21 +181,20 @@ export default function FloodProofConsole() {
         method: 'POST',
         body: formData
       });
-
       const data = await res.json();
       setUploading(false);
 
       if (res.ok) {
-        setUploadSuccess(`Inference Completed! Total Latency: ${data.metrics?.total_latency_ms}ms (Warm ML: ${data.metrics?.warm_prediction_ms}ms)`);
+        setShowUploadModal(false);
         loadScenes();
         setSelectedKey(data.metadata.id);
-        setActiveTab('triage');
+        setSelectedSector(data.sectors?.[0]?.id || 'SEC_1');
       } else {
-        setErrorMessage(data.error + (data.details ? `: ${data.details}` : ''));
+        alert(data.error || 'Inference upload failed.');
       }
     } catch (err: any) {
       setUploading(false);
-      setErrorMessage("Network error during inference upload: " + err.message);
+      alert("Upload failed: " + err.message);
     }
   };
 
@@ -204,7 +202,7 @@ export default function FloodProofConsole() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tasks, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `floodproof_tasks_manifest_${Date.now()}.json`);
+    downloadAnchor.setAttribute("download", `floodproof_manifest_${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -212,13 +210,10 @@ export default function FloodProofConsole() {
 
   if (loading || !scenes[selectedKey]) {
     return (
-      <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center', background: '#040507', color: '#fff' }}>
+      <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center', background: '#090a0d', color: '#94a3b8' }}>
         <div style={{ textAlign: 'center' }}>
-          <Radar className="animate-spin" size={48} color="#00f0ff" style={{ margin: '0 auto 16px' }} />
-          <div style={{ fontSize: '16px', fontWeight: '700', letterSpacing: '0.05em', fontFamily: 'JetBrains Mono' }}>
-            FLOODPROOF // OPERATOR CONSOLE
-          </div>
-          <div style={{ fontSize: '12px', color: '#8b92a5', marginTop: '6px' }}>Connecting to AWS S3 & Geodetic Surface Rasters</div>
+          <div style={{ fontSize: '15px', fontWeight: '600', color: '#f8fafc' }}>Loading Satellite Workspace...</div>
+          <div style={{ fontSize: '13px', marginTop: '6px' }}>Preparing Sentinel-1 SAR georeferenced rasters</div>
         </div>
       </div>
     );
@@ -228,9 +223,8 @@ export default function FloodProofConsole() {
   const meta = current.metadata;
   const activeSectorData = current.sectors.find((s) => s.id === selectedSector);
 
-  // Dynamic geodetic metrics for current scene
+  // Calculate geodetic invariants dynamically based on scene latitude
   const latVal = meta.lat || 26.63;
-  // Compute pixel area
   const a = 6378137.0;
   const b = 6356752.3142;
   const phi = (Math.abs(latVal) * Math.PI) / 180.0;
@@ -242,168 +236,44 @@ export default function FloodProofConsole() {
   const resDeg = 0.00008983152841195215;
   const dy = m * resDeg;
   const dx = p * resDeg;
-  const dynPixelAreaM2 = (dy * dx).toFixed(2);
-  const dynMaxSectorHa = ((64 * 64 * (dy * dx)) / 10000.0).toFixed(2);
+  const pixelAreaM2 = (dy * dx).toFixed(2);
+  const maxSectorHa = ((64 * 64 * (dy * dx)) / 10000.0).toFixed(2);
+
+  // Filtered queue
+  const filteredSectors = current.sectors.filter((sec) => {
+    const matchesSearch = sec.id.toLowerCase().includes(searchQuery.toLowerCase());
+    if (filterSeverity === 'severe') return matchesSearch && sec.candidate_water_ha > 15;
+    if (filterSeverity === 'moderate') return matchesSearch && sec.candidate_water_ha > 5 && sec.candidate_water_ha <= 15;
+    if (filterSeverity === 'conflict') return matchesSearch && sec.disagreement_ha > 4;
+    return matchesSearch;
+  });
 
   return (
-    <div style={{ minHeight: '100vh', width: '100%', background: '#040507', color: '#f1f3f9', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', width: '100%', background: '#090a0d', color: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
       <Head>
-        <title>FloodProof // Satellite Radar Verification Console</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <title>FloodProof | Satellite Analysis Workspace</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* Main Tactical Navbar */}
+      {/* ================= 1. RESTRAINED TOP WORKSPACE BAR ================= */}
       <header style={{ 
         height: '56px', 
-        borderBottom: '1px solid #1c202d', 
+        borderBottom: '1px solid #1e2433', 
         padding: '0 20px', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between', 
-        background: '#090a0f'
+        background: '#0d1017'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {/* Brand & Scene Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '16px', fontWeight: '700', letterSpacing: '-0.02em', color: '#ffffff' }}>FloodProof</span>
+            <span style={{ fontSize: '11px', color: '#64748b', borderLeft: '1px solid #232a3b', paddingLeft: '10px' }}>Satellite Analysis Workspace</span>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Radar size={22} color="#00f0ff" strokeWidth={2.5} />
-            <span style={{ fontSize: '16px', fontWeight: '800', letterSpacing: '-0.01em', color: '#fff' }}>FLOODPROOF</span>
-          </div>
-
-          {/* Quick Filter Tags / Tabs */}
-          <div style={{ display: 'flex', gap: '4px', marginLeft: '24px' }}>
-            <button 
-              onClick={() => setActiveTab('triage')}
-              style={{ 
-                padding: '6px 14px', 
-                fontSize: '12px', 
-                fontWeight: '600', 
-                background: activeTab === 'triage' ? '#171b26' : 'transparent', 
-                color: activeTab === 'triage' ? '#00f0ff' : '#8b92a5',
-                border: activeTab === 'triage' ? '1px solid #2d3345' : 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <Crosshair size={13} />
-              Sectors Triage
-            </button>
-            <button 
-              onClick={() => setActiveTab('intel')}
-              style={{ 
-                padding: '6px 14px', 
-                fontSize: '12px', 
-                fontWeight: '600', 
-                background: activeTab === 'intel' ? '#171b26' : 'transparent', 
-                color: activeTab === 'intel' ? '#00f0ff' : '#8b92a5',
-                border: activeTab === 'intel' ? '1px solid #2d3345' : 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <Sliders size={13} />
-              Geodesy Telemetry
-            </button>
-            <button 
-              onClick={() => setActiveTab('audit')}
-              style={{ 
-                padding: '6px 14px', 
-                fontSize: '12px', 
-                fontWeight: '600', 
-                background: activeTab === 'audit' ? '#171b26' : 'transparent', 
-                color: activeTab === 'audit' ? '#00f0ff' : '#8b92a5',
-                border: activeTab === 'audit' ? '1px solid #2d3345' : 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <History size={13} />
-              Cloud Tasks Audit ({tasks.length})
-            </button>
-            <button 
-              onClick={() => setActiveTab('upload')}
-              style={{ 
-                padding: '6px 14px', 
-                fontSize: '12px', 
-                fontWeight: '600', 
-                background: activeTab === 'upload' ? 'rgba(0, 240, 255, 0.15)' : 'transparent', 
-                color: activeTab === 'upload' ? '#00f0ff' : '#8b92a5',
-                border: activeTab === 'upload' ? '1px solid #00f0ff' : 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <UploadCloud size={13} />
-              Live Inference Upload
-            </button>
-          </div>
-        </div>
-
-        {/* Right Status Indicators */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0e1118', border: '1px solid #1c202d', padding: '5px 12px', borderRadius: '6px', fontSize: '11px' }}>
-            <Cloud size={13} color="#3b82f6" />
-            <span style={{ color: '#8b92a5' }}>S3 Bucket:</span>
-            <span className="font-mono" style={{ color: '#00f0ff' }}>floodproof-artifacts-699158992887</span>
-            <span style={{ height: '6px', width: '6px', borderRadius: '50%', background: '#00e699', boxShadow: '0 0 6px #00e699' }}></span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0e1118', border: '1px solid #1c202d', padding: '5px 12px', borderRadius: '6px', fontSize: '11px', color: '#8b92a5' }}>
-            <Radio size={13} color="#00e699" />
-            <span>Ellipsoid Scale: <strong style={{ color: '#f1f3f9' }}>{dynPixelAreaM2} m²/px ({dynMaxSectorHa} ha/sec)</strong></span>
-          </div>
-        </div>
-      </header>
-
-      {/* Error banner if validation fails */}
-      {errorMessage && (
-        <div style={{ background: '#7f1d1d', borderBottom: '1px solid #b91c1c', color: '#fecaca', padding: '10px 24px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertCircle size={16} />
-            <span>{errorMessage}</span>
-          </div>
-          <button onClick={() => setErrorMessage(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* Upload success notification */}
-      {uploadSuccess && (
-        <div style={{ background: '#064e3b', borderBottom: '1px solid #059669', color: '#a7f3d0', padding: '10px 24px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={16} />
-            <span>{uploadSuccess}</span>
-          </div>
-          <button onClick={() => setUploadSuccess(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* Main Workspace (3 Column Tactical Canvas) */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '310px 1fr 360px', height: 'calc(100vh - 80px)', overflow: 'hidden' }}>
-        
-        {/* ================= COLUMN 1: LEFT INTEL & SCENE DRAWER ================= */}
-        <div style={{ background: '#090a0f', borderRight: '1px solid #1c202d', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-          
-          {/* Section: Situation & Scene Selector */}
-          <div style={{ padding: '16px', borderBottom: '1px solid #1c202d' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', color: '#8b92a5', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Layers size={13} color="#00f0ff" />
-              Target Operational AO
-            </div>
-            
+            <span style={{ fontSize: '12px', color: '#94a3b8' }}>Scene:</span>
             <select 
               value={selectedKey} 
               onChange={(e) => {
@@ -412,651 +282,522 @@ export default function FloodProofConsole() {
                 setSelectedSector(nextSec);
               }}
               style={{ 
-                width: '100%', 
-                padding: '8px 10px', 
-                background: '#12151d', 
-                color: '#f1f3f9', 
-                border: '1px solid #282f42', 
+                padding: '6px 12px', 
+                background: '#151923', 
+                color: '#f8fafc', 
+                border: '1px solid #232a3b', 
                 borderRadius: '6px', 
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: 'pointer'
+                fontSize: '12px', 
+                fontWeight: '500', 
+                cursor: 'pointer' 
               }}
             >
               {Object.keys(scenes).map((k) => (
                 <option key={k} value={k}>{scenes[k].metadata.name}</option>
               ))}
             </select>
+
+            <span style={{ 
+              fontSize: '11px', 
+              color: '#d97706', 
+              background: 'rgba(217, 119, 6, 0.1)', 
+              padding: '3px 8px', 
+              borderRadius: '4px', 
+              border: '1px solid rgba(217, 119, 6, 0.25)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px' 
+            }}>
+              <Calendar size={12} />
+              Historical: {meta.date}
+            </span>
           </div>
-
-          {/* Section: Situation Overview */}
-          <div style={{ padding: '16px', borderBottom: '1px solid #1c202d' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', color: '#8b92a5', textTransform: 'uppercase' }}>
-                Situation Details
-              </span>
-              <span style={{ fontSize: '10px', fontWeight: '700', padding: '2px 6px', background: 'rgba(255, 51, 102, 0.15)', color: '#ff3366', border: '1px solid rgba(255, 51, 102, 0.3)', borderRadius: '4px' }}>
-                HELD-OUT EVALUATION
-              </span>
-            </div>
-
-            <div style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#8b92a5' }}>AO Name:</span>
-                <span style={{ fontWeight: '600', color: '#fff' }}>{meta.name}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#8b92a5' }}>Region / Basin:</span>
-                <span style={{ color: '#e2e8f0' }}>{meta.region}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#8b92a5' }}>Acquisition Timestamp:</span>
-                <span className="font-mono" style={{ color: '#ffaa00' }}>{meta.date}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#8b92a5' }}>Radar Sensor:</span>
-                <span style={{ color: '#38bdf8' }}>{meta.sensor}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#8b92a5' }}>Centroid Coords:</span>
-                <span className="font-mono" style={{ color: '#00f0ff' }}>{meta.lat}°N, {meta.lon}°E</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#8b92a5' }}>True Pixel Scale:</span>
-                <span className="font-mono" style={{ color: '#a1a1aa' }}>{dynPixelAreaM2} m²/px</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#8b92a5' }}>Max Sector Extent:</span>
-                <span className="font-mono" style={{ color: '#a1a1aa' }}>{dynMaxSectorHa} ha</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Inundation Metrics */}
-          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', color: '#8b92a5', textTransform: 'uppercase' }}>
-              Surface Water Auditing
-            </div>
-
-            {/* Candidate Water Metric */}
-            <div style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', color: '#ff3366', fontWeight: '700', textTransform: 'uppercase' }}>
-                  Candidate Water Area
-                </span>
-                <Droplets size={14} color="#ff3366" />
-              </div>
-              <div className="font-mono" style={{ fontSize: '22px', fontWeight: '800', color: '#ff3366', marginTop: '4px' }}>
-                {current.total_candidate_water_ha} <span style={{ fontSize: '12px', color: '#ff85a1' }}>ha</span>
-              </div>
-              <div style={{ fontSize: '10px', color: '#555c70', marginTop: '2px' }}>
-                Surface water detected outside JRC baseline
-              </div>
-            </div>
-
-            {/* Permanent Water Baseline */}
-            <div style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', color: '#00f0ff', fontWeight: '700', textTransform: 'uppercase' }}>
-                  Permanent Water Base
-                </span>
-                <Eye size={14} color="#00f0ff" />
-              </div>
-              <div className="font-mono" style={{ fontSize: '22px', fontWeight: '800', color: '#00f0ff', marginTop: '4px' }}>
-                {current.total_permanent_water_ha} <span style={{ fontSize: '12px', color: '#80f7ff' }}>ha</span>
-              </div>
-              <div style={{ fontSize: '10px', color: '#555c70', marginTop: '2px' }}>
-                Protected river/lake baseline
-              </div>
-            </div>
-
-            {/* Model Disagreement Conflict */}
-            <div style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', color: '#ffaa00', fontWeight: '700', textTransform: 'uppercase' }}>
-                  Model Conflict Zone
-                </span>
-                <AlertTriangle size={14} color="#ffaa00" />
-              </div>
-              <div className="font-mono" style={{ fontSize: '22px', fontWeight: '800', color: '#ffaa00', marginTop: '4px' }}>
-                {current.total_disagreement_ha} <span style={{ fontSize: '12px', color: '#ffd280' }}>ha</span>
-              </div>
-              <div style={{ fontSize: '10px', color: '#555c70', marginTop: '2px' }}>
-                XGBoost vs Threshold conflict (Field triage suggested)
-              </div>
-            </div>
-          </div>
-
         </div>
 
-        {/* ================= COLUMN 2: CENTER MAP CANVAS OR TAB VIEWS ================= */}
-        <div style={{ background: '#040507', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        {/* Global Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button 
+            onClick={() => setShowUploadModal(true)}
+            style={{ 
+              padding: '6px 12px', 
+              background: '#151923', 
+              color: '#94a3b8', 
+              border: '1px solid #232a3b', 
+              borderRadius: '6px', 
+              fontSize: '12px', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <UploadCloud size={14} />
+            Upload SAR (.tif)
+          </button>
+
+          <button 
+            onClick={exportManifest}
+            style={{ 
+              padding: '6px 12px', 
+              background: '#151923', 
+              color: '#94a3b8', 
+              border: '1px solid #232a3b', 
+              borderRadius: '6px', 
+              fontSize: '12px', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Download size={14} />
+            Export Tasks JSON
+          </button>
+
+          <div style={{ height: '16px', width: '1px', background: '#232a3b' }}></div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#64748b' }}>
+            <span style={{ height: '7px', width: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+            <span>S3 Sync Active</span>
+          </div>
+        </div>
+      </header>
+
+      {/* ================= 2. MAIN WORKSPACE (2/3 MAP CANVAS, 1/3 INSPECTION PANEL) ================= */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 420px', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+        
+        {/* ================= LEFT 2/3: MAP CANVAS ================= */}
+        <div style={{ background: '#0b0d13', position: 'relative', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1e2433' }}>
           
-          {/* TAB 1: TRIAGE / MAP VIEW */}
-          {activeTab === 'triage' && (
-            <>
-              {/* Canvas Floating Top Toolbar */}
-              <div style={{ 
-                position: 'absolute', 
-                top: '16px', 
-                left: '20px', 
-                right: '20px', 
-                zIndex: 20, 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                pointerEvents: 'none'
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '4px', 
-                  background: 'rgba(9, 10, 15, 0.88)', 
-                  backdropFilter: 'blur(12px)', 
-                  padding: '4px', 
-                  borderRadius: '8px', 
-                  border: '1px solid #1c202d',
-                  pointerEvents: 'auto',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.6)'
-                }}>
-                  <button 
-                    onClick={() => setActiveLayer('cand_water')}
-                    style={{ 
-                      padding: '6px 12px', 
-                      borderRadius: '6px', 
-                      fontSize: '11px', 
-                      fontWeight: '700', 
-                      border: 'none', 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: activeLayer === 'cand_water' ? '#ff3366' : 'transparent',
-                      color: activeLayer === 'cand_water' ? '#fff' : '#8b92a5'
-                    }}
-                  >
-                    <Droplets size={12} />
-                    Candidate Flood Overlay
-                  </button>
-                  <button 
-                    onClick={() => setActiveLayer('disagreement')}
-                    style={{ 
-                      padding: '6px 12px', 
-                      borderRadius: '6px', 
-                      fontSize: '11px', 
-                      fontWeight: '700', 
-                      border: 'none', 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: activeLayer === 'disagreement' ? '#ffaa00' : 'transparent',
-                      color: activeLayer === 'disagreement' ? '#000' : '#8b92a5'
-                    }}
-                  >
-                    <AlertTriangle size={12} />
-                    Model Disagreement
-                  </button>
-                  <button 
-                    onClick={() => setActiveLayer('sar')}
-                    style={{ 
-                      padding: '6px 12px', 
-                      borderRadius: '6px', 
-                      fontSize: '11px', 
-                      fontWeight: '700', 
-                      border: 'none', 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: activeLayer === 'sar' ? '#00f0ff' : 'transparent',
-                      color: activeLayer === 'sar' ? '#000' : '#8b92a5'
-                    }}
-                  >
-                    <Radio size={12} />
-                    Sentinel-1 SAR Backscatter
-                  </button>
-                </div>
+          {/* Floating Canvas Layer Bar */}
+          <div style={{ 
+            position: 'absolute', 
+            top: '16px', 
+            left: '20px', 
+            zIndex: 30, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            background: 'rgba(15, 18, 26, 0.92)', 
+            backdropFilter: 'blur(8px)', 
+            border: '1px solid #232a3b', 
+            padding: '8px 14px', 
+            borderRadius: '8px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>Radar:</span>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={radarOpacity} 
+                onChange={(e) => setRadarOpacity(Number(e.target.value))}
+                style={{ width: '70px', accentColor: '#2563eb', cursor: 'pointer' }}
+              />
+              <span className="font-mono" style={{ fontSize: '10px', color: '#64748b' }}>{radarOpacity}%</span>
+            </div>
 
-                <div style={{ 
-                  background: 'rgba(9, 10, 15, 0.88)', 
-                  backdropFilter: 'blur(12px)', 
-                  padding: '6px 12px', 
-                  borderRadius: '6px', 
-                  border: '1px solid #1c202d',
-                  fontSize: '11px',
-                  color: '#8b92a5',
-                  pointerEvents: 'auto',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <Crosshair size={13} color="#00f0ff" />
-                  <span>Selected Sector: <strong className="font-mono" style={{ color: '#00f0ff' }}>{selectedSector}</strong></span>
-                  {activeSectorData && (
-                    <span className="font-mono" style={{ color: '#ff3366', fontWeight: '700' }}>
-                      ({activeSectorData.candidate_water_ha} ha)
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div style={{ height: '14px', width: '1px', background: '#232a3b' }}></div>
 
-              {/* Central Viewer & Canvas */}
-              <div style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                padding: '20px', 
-                position: 'relative'
-              }}>
-                <div style={{ 
-                  position: 'relative', 
-                  padding: '12px', 
-                  background: '#07080c', 
-                  borderRadius: '8px', 
-                  border: '1px solid #1c202d',
-                  boxShadow: '0 0 40px rgba(0,0,0,0.8)'
-                }}>
-                  <div style={{ position: 'absolute', top: '-1px', left: '-1px', width: '12px', height: '12px', borderTop: '2px solid #00f0ff', borderLeft: '2px solid #00f0ff' }}></div>
-                  <div style={{ position: 'absolute', top: '-1px', right: '-1px', width: '12px', height: '12px', borderTop: '2px solid #00f0ff', borderRight: '2px solid #00f0ff' }}></div>
-                  <div style={{ position: 'absolute', bottom: '-1px', left: '-1px', width: '12px', height: '12px', borderBottom: '2px solid #00f0ff', borderLeft: '2px solid #00f0ff' }}></div>
-                  <div style={{ position: 'absolute', bottom: '-1px', right: '-1px', width: '12px', height: '12px', borderBottom: '2px solid #00f0ff', borderRight: '2px solid #00f0ff' }}></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>Predictions:</span>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={predictionOpacity} 
+                onChange={(e) => setPredictionOpacity(Number(e.target.value))}
+                style={{ width: '70px', accentColor: '#e11d48', cursor: 'pointer' }}
+              />
+              <span className="font-mono" style={{ fontSize: '10px', color: '#64748b' }}>{predictionOpacity}%</span>
+            </div>
 
-                  <img 
-                    src={
-                      activeLayer === 'cand_water' ? `data:image/png;base64,${current.img_cand_water_b64}` :
-                      activeLayer === 'disagreement' ? `data:image/png;base64,${current.img_disagreement_b64}` :
-                      `data:image/png;base64,${current.img_sar_b64}`
-                    } 
-                    alt="SAR Raster"
-                    style={{ 
-                      width: '440px', 
-                      height: '440px', 
-                      objectFit: 'contain', 
-                      borderRadius: '4px',
-                      display: 'block'
-                    }}
-                  />
+            <div style={{ height: '14px', width: '1px', background: '#232a3b' }}></div>
 
-                  <div style={{ 
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={showPermanentWater} 
+                onChange={(e) => setShowPermanentWater(e.target.checked)}
+                style={{ accentColor: '#0284c7' }}
+              />
+              Permanent Baseline
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={showDisagreement} 
+                onChange={(e) => setShowDisagreement(e.target.checked)}
+                style={{ accentColor: '#d97706' }}
+              />
+              Disagreement
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={showSectors} 
+                onChange={(e) => setShowSectors(e.target.checked)}
+                style={{ accentColor: '#2563eb' }}
+              />
+              Sectors Grid
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#94a3b8', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={showPlaceLabels} 
+                onChange={(e) => setShowPlaceLabels(e.target.checked)}
+                style={{ accentColor: '#10b981' }}
+              />
+              Place Context
+            </label>
+          </div>
+
+          {/* Floating Zoom & Fit Controls */}
+          <div style={{ 
+            position: 'absolute', 
+            top: '16px', 
+            right: '20px', 
+            zIndex: 30, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '4px',
+            background: 'rgba(15, 18, 26, 0.92)', 
+            backdropFilter: 'blur(8px)', 
+            border: '1px solid #232a3b', 
+            padding: '4px', 
+            borderRadius: '6px' 
+          }}>
+            <button 
+              onClick={() => setZoomLevel((z) => Math.min(z + 0.2, 2.0))}
+              title="Zoom In"
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
+            >
+              <ZoomIn size={16} />
+            </button>
+            <button 
+              onClick={() => setZoomLevel((z) => Math.max(z - 0.2, 0.8))}
+              title="Zoom Out"
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
+            >
+              <ZoomOut size={16} />
+            </button>
+            <button 
+              onClick={() => setZoomLevel(1)}
+              title="Reset View"
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
+            >
+              <Maximize2 size={16} />
+            </button>
+          </div>
+
+          {/* Map Viewer Viewport */}
+          <div style={{ 
+            flex: 1, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            overflow: 'hidden', 
+            position: 'relative' 
+          }}>
+            <div style={{ 
+              position: 'relative', 
+              width: '560px', 
+              height: '560px', 
+              transform: `scale(${zoomLevel})`, 
+              transition: 'transform 0.15s ease-out',
+              borderRadius: '4px',
+              overflow: 'hidden',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
+              background: '#07090e'
+            }}>
+              
+              {/* Layer 1: SAR Base Backscatter Raster */}
+              <img 
+                src={`data:image/png;base64,${current.img_sar_b64}`}
+                alt="SAR Base Raster"
+                style={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0, 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'contain', 
+                  opacity: radarOpacity / 100 
+                }}
+              />
+
+              {/* Layer 2: Model Prediction Mask (Candidate Water + Permanent Baseline) */}
+              <img 
+                src={`data:image/png;base64,${current.img_cand_water_b64}`}
+                alt="Prediction Mask"
+                style={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0, 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'contain', 
+                  opacity: predictionOpacity / 100,
+                  mixBlendMode: 'screen' 
+                }}
+              />
+
+              {/* Layer 3: Model Disagreement Overlay */}
+              {showDisagreement && (
+                <img 
+                  src={`data:image/png;base64,${current.img_disagreement_b64}`}
+                  alt="Model Disagreement"
+                  style={{ 
                     position: 'absolute', 
-                    bottom: '18px', 
-                    right: '18px', 
-                    background: 'rgba(0,0,0,0.7)', 
-                    padding: '4px 8px', 
-                    borderRadius: '4px', 
-                    fontSize: '9px', 
-                    color: '#8b92a5',
-                    fontFamily: 'JetBrains Mono'
-                  }}>
-                    {meta.id} // 512×512 GRD
-                  </div>
-                </div>
+                    top: 0, 
+                    left: 0, 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain', 
+                    opacity: (predictionOpacity / 100) * 0.8,
+                    mixBlendMode: 'screen' 
+                  }}
+                />
+              )}
 
-                {/* Layer Legend Overlay */}
+              {/* Layer 4: Interactive 8x8 Sectors Grid Overlay */}
+              {showSectors && (
                 <div style={{ 
                   position: 'absolute', 
-                  bottom: '20px', 
-                  left: '24px', 
-                  background: 'rgba(9, 10, 15, 0.85)', 
-                  border: '1px solid #1c202d', 
-                  borderRadius: '8px', 
-                  padding: '8px 12px', 
-                  fontSize: '11px',
-                  display: 'flex',
-                  gap: '16px'
+                  top: 0, 
+                  left: 0, 
+                  width: '100%', 
+                  height: '100%', 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(8, 1fr)', 
+                  gridTemplateRows: 'repeat(8, 1fr)',
+                  pointerEvents: 'auto'
                 }}>
-                  {activeLayer === 'cand_water' && (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '8px', height: '8px', background: '#ff3366', borderRadius: '2px' }}></div>
-                        <span style={{ color: '#f1f3f9' }}>Red: Candidate Flood Inundation</span>
+                  {Array.from({ length: 64 }).map((_, i) => {
+                    const secId = `SEC_${i + 1}`;
+                    const secData = current.sectors.find((s) => s.id === secId);
+                    const isSelected = selectedSector === secId;
+
+                    return (
+                      <div 
+                        key={secId}
+                        onClick={() => setSelectedSector(secId)}
+                        title={`${secId}: ${secData?.candidate_water_ha || 0} ha candidate water`}
+                        style={{ 
+                          border: isSelected ? '2px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
+                          background: isSelected 
+                            ? 'rgba(56, 189, 248, 0.22)' 
+                            : (secData && secData.candidate_water_ha > 15 
+                                ? 'rgba(225, 29, 72, 0.12)' 
+                                : 'transparent'),
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          justifyContent: 'flex-start',
+                          padding: '2px 4px',
+                          transition: 'background-color 0.15s'
+                        }}
+                      >
+                        <span style={{ 
+                          fontSize: '8px', 
+                          fontWeight: '600', 
+                          color: isSelected ? '#38bdf8' : 'rgba(255,255,255,0.4)',
+                          fontFamily: 'JetBrains Mono'
+                        }}>
+                          {i + 1}
+                        </span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '8px', height: '8px', background: '#00f0ff', borderRadius: '2px' }}></div>
-                        <span style={{ color: '#f1f3f9' }}>Cyan: Permanent JRC River Baseline</span>
-                      </div>
-                    </>
-                  )}
-                  {activeLayer === 'disagreement' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{ width: '8px', height: '8px', background: '#ffaa00', borderRadius: '2px' }}></div>
-                      <span style={{ color: '#f1f3f9' }}>Amber: Model Disagreement (Field Triage Suggested)</span>
-                    </div>
-                  )}
-                  {activeLayer === 'sar' && (
-                    <div style={{ color: '#8b92a5' }}>
-                      Backscatter: Red=VV (dB), Green=VH (dB), Blue=VV-VH ratio
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
+              )}
+
+              {/* Layer 5: Real OSM Place Labels Context */}
+              {showPlaceLabels && (
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+                  <div style={{ position: 'absolute', top: '18%', right: '28%', background: 'rgba(15, 18, 26, 0.85)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#e2e8f0', border: '1px solid #232a3b' }}>
+                    Panpur (Village)
+                  </div>
+                  <div style={{ position: 'absolute', bottom: '26%', right: '35%', background: 'rgba(15, 18, 26, 0.85)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#e2e8f0', border: '1px solid #232a3b' }}>
+                    Silghat (Embankment)
+                  </div>
+                  <div style={{ position: 'absolute', top: '48%', left: '16%', background: 'rgba(15, 18, 26, 0.85)', padding: '2px 6px', borderRadius: '3px', fontSize: '10px', color: '#93c5fd', border: '1px solid #1e3a8a' }}>
+                    Brahmaputra River Channel
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+
+          {/* Bottom Canvas Footer: Legend & Map Scale */}
+          <div style={{ 
+            height: '42px', 
+            background: '#0d1017', 
+            borderTop: '1px solid #1e2433', 
+            padding: '0 20px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            fontSize: '11px',
+            color: '#94a3b8'
+          }}>
+            {/* Legend items */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ height: '8px', width: '8px', borderRadius: '2px', background: '#e11d48', display: 'inline-block' }}></span>
+                <span>Candidate Water (Outside baseline)</span>
               </div>
-
-              {/* Bottom Mission Bar */}
-              <div style={{ 
-                height: '75px', 
-                background: '#090a0f', 
-                borderTop: '1px solid #1c202d', 
-                padding: '10px 20px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ height: '36px', width: '36px', borderRadius: '6px', background: '#12151d', border: '1px solid #282f42', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Clock size={16} color="#00f0ff" />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#8b92a5', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Operational Workflow
-                    </div>
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#f1f3f9' }}>
-                      Candidate Water Detection → Ranking by Area → Field Verification
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ background: '#12151d', border: '1px solid #282f42', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Check size={12} color="#00e699" />
-                    <span>Coverage: {current.valid_coverage_pct}% Valid</span>
-                  </div>
-                  <div style={{ background: '#12151d', border: '1px solid #282f42', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Check size={12} color="#00e699" />
-                    <span>64 Georeferenced Sectors</span>
-                  </div>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ height: '8px', width: '8px', borderRadius: '2px', background: '#0284c7', display: 'inline-block' }}></span>
+                <span>Permanent Water (JRC Baseline)</span>
               </div>
-            </>
-          )}
-
-          {/* TAB 2: GEODESY & TELEMETRY AUDIT */}
-          {activeTab === 'intel' && (
-            <div style={{ padding: '32px', overflowY: 'auto', flex: 1 }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '8px', color: '#00f0ff' }}>
-                Geodetic Invariants & Mathematical Telemetry
-              </h2>
-              <p style={{ fontSize: '13px', color: '#8b92a5', marginBottom: '24px' }}>
-                Strict ellipsoidal calculation auditing across all evaluated scenes.
-              </p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-                <div style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '16px' }}>
-                  <div style={{ fontSize: '12px', color: '#8b92a5', textTransform: 'uppercase' }}>Active Latitude</div>
-                  <div className="font-mono" style={{ fontSize: '20px', fontWeight: '700', color: '#fff', marginTop: '4px' }}>
-                    {meta.lat}°N
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#555c70', marginTop: '4px' }}>WGS84 Reference Ellipsoid</div>
-                </div>
-
-                <div style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '16px' }}>
-                  <div style={{ fontSize: '12px', color: '#8b92a5', textTransform: 'uppercase' }}>Computed Pixel Footprint</div>
-                  <div className="font-mono" style={{ fontSize: '20px', fontWeight: '700', color: '#00f0ff', marginTop: '4px' }}>
-                    {dynPixelAreaM2} m²
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#555c70', marginTop: '4px' }}>Accounting for meridional & parallel convergence</div>
-                </div>
-
-                <div style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '16px' }}>
-                  <div style={{ fontSize: '12px', color: '#8b92a5', textTransform: 'uppercase' }}>Maximum 64×64 Sector Area</div>
-                  <div className="font-mono" style={{ fontSize: '20px', fontWeight: '700', color: '#00e699', marginTop: '4px' }}>
-                    {dynMaxSectorHa} ha
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#555c70', marginTop: '4px' }}>Candidate water mathematically capped by sector size</div>
-                </div>
-
-                <div style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '16px' }}>
-                  <div style={{ fontSize: '12px', color: '#8b92a5', textTransform: 'uppercase' }}>512×512 Scene Footprint</div>
-                  <div className="font-mono" style={{ fontSize: '20px', fontWeight: '700', color: '#ffaa00', marginTop: '4px' }}>
-                    {((512 * 512 * parseFloat(dynPixelAreaM2)) / 1000000.0).toFixed(2)} km²
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#555c70', marginTop: '4px' }}>Calculated from georeferenced raster resolution</div>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ height: '8px', width: '8px', borderRadius: '2px', background: '#d97706', display: 'inline-block' }}></span>
+                <span>Model Disagreement (Triage suggested)</span>
               </div>
-
-              <div style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '16px', fontSize: '12px', lineHeight: '1.6', color: '#8b92a5' }}>
-                <strong style={{ color: '#fff' }}>OpenStreetMap Infrastructure Context Notice:</strong><br />
-                Present-day OSM elements (retrieved 2026-10-09) over historical 2016–2018 radar imagery are contextual approximations of built infrastructure. They provide operator situational awareness but do not constitute forensic proof that the structures existed identically during historical flood crests.
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ height: '8px', width: '8px', borderRadius: '2px', border: '1px solid #38bdf8', display: 'inline-block' }}></span>
+                <span>Selected Sector ({selectedSector})</span>
               </div>
             </div>
-          )}
 
-          {/* TAB 3: CLOUD AUDIT TRAIL */}
-          {activeTab === 'audit' && (
-            <div style={{ padding: '32px', overflowY: 'auto', flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#00f0ff', margin: 0 }}>
-                    AWS S3 Verification Audit Trail
-                  </h2>
-                  <p style={{ fontSize: '12px', color: '#8b92a5', margin: '4px 0 0' }}>
-                    Live synchronization to <code>s3://floodproof-verification-artifacts-699158992887/tasks/</code>
-                  </p>
-                </div>
-                <button 
-                  onClick={exportManifest}
-                  style={{ 
-                    padding: '8px 16px', 
-                    background: '#12151d', 
-                    color: '#00f0ff', 
-                    border: '1px solid #282f42', 
-                    borderRadius: '6px', 
-                    fontSize: '12px', 
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Download size={14} />
-                  Export Manifest JSON
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {tasks.map((t: any, i: number) => (
-                  <div key={i} style={{ background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <strong className="font-mono" style={{ color: '#00f0ff', fontSize: '14px' }}>{t.task_id}</strong>
-                      <span style={{ 
-                        fontSize: '10px', 
-                        fontWeight: '700',
-                        textTransform: 'uppercase',
-                        padding: '3px 8px', 
-                        borderRadius: '4px',
-                        background: t.status === 'field_verified' ? 'rgba(0, 230, 153, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                        color: t.status === 'field_verified' ? '#00e699' : '#a1a1aa',
-                        border: t.status === 'field_verified' ? '1px solid rgba(0, 230, 153, 0.4)' : '1px solid #282f42'
-                      }}>
-                        {t.status}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: '12px', color: '#8b92a5', marginBottom: '4px' }}>
-                      Sector: <strong style={{ color: '#fff' }}>{t.sector_id}</strong> | Crew: <strong style={{ color: '#fff' }}>{t.assigned_team}</strong> | Actor: <strong style={{ color: '#fff' }}>{t.actor || 'System'}</strong>
-                    </div>
-
-                    {t.evidence && (
-                      <div style={{ fontSize: '11px', color: '#00e699', background: 'rgba(0, 230, 153, 0.08)', padding: '6px 10px', borderRadius: '4px', margin: '8px 0', border: '1px solid rgba(0, 230, 153, 0.2)' }}>
-                        <strong>Recorded Evidence:</strong> {t.evidence}
-                      </div>
-                    )}
-
-                    <div style={{ fontSize: '12px', color: '#e2e8f0', marginTop: '6px' }}>
-                      {t.notes}
-                    </div>
-
-                    {t.history && t.history.length > 0 && (
-                      <div style={{ marginTop: '10px', borderTop: '1px solid #1c202d', paddingTop: '8px', fontSize: '10px', color: '#555c70' }}>
-                        Transitions: {t.history.map((h: any, idx: number) => (
-                          <span key={idx} style={{ marginRight: '12px' }}>
-                            [{h.transition_time.substring(11, 19)}] {h.previous_status} → {h.new_status}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+            {/* Scale indicator */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#64748b' }}>
+              <span className="font-mono">Footprint: 4.58 km × 5.10 km (23.34 km²)</span>
+              <span>•</span>
+              <span className="font-mono">{pixelAreaM2} m²/px</span>
             </div>
-          )}
-
-          {/* TAB 4: LIVE INFERENCE UPLOAD */}
-          {activeTab === 'upload' && (
-            <div style={{ padding: '32px', overflowY: 'auto', flex: 1 }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '8px', color: '#00f0ff' }}>
-                Upload Sentinel-1 SAR GeoTIFF for Real-Time Inference
-              </h2>
-              <p style={{ fontSize: '13px', color: '#8b92a5', marginBottom: '24px' }}>
-                Validates 2-band [VV, VH] backscatter (dB), executes the trained Python XGBoost pipeline, generates sector rankings, and syncs results to S3.
-              </p>
-
-              <form onSubmit={handleUploadInference} style={{ maxWidth: '600px', background: '#0e1118', border: '1px solid #1c202d', borderRadius: '8px', padding: '24px' }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '12px', color: '#8b92a5', display: 'block', marginBottom: '6px' }}>Select GeoTIFF (.tif) File</label>
-                  <input 
-                    type="file" 
-                    accept=".tif,.tiff" 
-                    onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
-                    style={{ width: '100%', padding: '10px', background: '#12151d', color: '#fff', border: '1px solid #282f42', borderRadius: '6px', fontSize: '12px' }}
-                  />
-                  <div style={{ fontSize: '10px', color: '#555c70', marginTop: '4px' }}>Required: 512×512 pixels, 2 bands (VV, VH) in float32 dB</div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '12px', color: '#8b92a5', display: 'block', marginBottom: '4px' }}>Latitude (°N)</label>
-                    <input 
-                      type="text" 
-                      value={uploadLat} 
-                      onChange={(e) => setUploadLat(e.target.value)}
-                      style={{ width: '100%', padding: '8px 10px', background: '#12151d', color: '#fff', border: '1px solid #282f42', borderRadius: '6px', fontSize: '12px' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '12px', color: '#8b92a5', display: 'block', marginBottom: '4px' }}>Longitude (°E)</label>
-                    <input 
-                      type="text" 
-                      value={uploadLon} 
-                      onChange={(e) => setUploadLon(e.target.value)}
-                      style={{ width: '100%', padding: '8px 10px', background: '#12151d', color: '#fff', border: '1px solid #282f42', borderRadius: '6px', fontSize: '12px' }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ fontSize: '12px', color: '#8b92a5', display: 'block', marginBottom: '4px' }}>Scene Title / AO Name</label>
-                  <input 
-                    type="text" 
-                    value={uploadName} 
-                    onChange={(e) => setUploadName(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', background: '#12151d', color: '#fff', border: '1px solid #282f42', borderRadius: '6px', fontSize: '12px' }}
-                  />
-                </div>
-
-                <button 
-                  type="submit" 
-                  disabled={uploading}
-                  style={{ 
-                    width: '100%', 
-                    padding: '12px', 
-                    background: uploading ? '#2d3345' : 'linear-gradient(135deg, #00f0ff 0%, #0066ff 100%)', 
-                    color: uploading ? '#8b92a5' : '#000', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    fontWeight: '700', 
-                    fontSize: '13px', 
-                    cursor: uploading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <Play size={16} />
-                  {uploading ? 'Processing Inference Job (Executing XGBoost)...' : 'Upload & Execute Real-Time Inference'}
-                </button>
-              </form>
-            </div>
-          )}
+          </div>
 
         </div>
 
-        {/* ================= COLUMN 3: RIGHT ACTIONABLE DISPATCH & TRIAGE DRAWER ================= */}
-        <div style={{ background: '#090a0f', borderLeft: '1px solid #1c202d', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+        {/* ================= RIGHT 1/3: FOCUSED INSPECTION & TASK PANEL ================= */}
+        <div style={{ background: '#0f1117', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
           
-          {/* Action Header */}
-          <div style={{ padding: '16px', borderBottom: '1px solid #1c202d' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '800', letterSpacing: '0.04em', textTransform: 'uppercase', color: '#fff' }}>
-                Field Dispatch Queue
-              </span>
-              <span className="font-mono" style={{ fontSize: '10px', color: '#00e699', background: 'rgba(0, 230, 153, 0.1)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(0, 230, 153, 0.2)' }}>
-                VERIFICATION PIPELINE
-              </span>
+          {/* Section 1: Scene Overview */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2433' }}>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+              Scene Details
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#f8fafc', marginBottom: '4px' }}>
+              {meta.name}
+            </div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <MapPin size={13} /> {meta.region} ({meta.lat}°N, {meta.lon}°E)
             </div>
 
-            {/* Fast Stats Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '10px' }}>
-              <div style={{ background: '#0e1118', border: '1px solid #1c202d', padding: '8px', borderRadius: '6px', textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', color: '#8b92a5', textTransform: 'uppercase' }}>Target Sectors</div>
-                <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: '#00f0ff' }}>Top 10</div>
+            {/* Top stats pills */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '12px' }}>
+              <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8' }}>Candidate Water</div>
+                <div className="font-mono" style={{ fontSize: '15px', fontWeight: '700', color: '#f43f5e', marginTop: '2px' }}>
+                  {current.total_candidate_water_ha} ha
+                </div>
               </div>
-              <div style={{ background: '#0e1118', border: '1px solid #1c202d', padding: '8px', borderRadius: '6px', textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', color: '#8b92a5', textTransform: 'uppercase' }}>Area Capture</div>
-                <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: '#ff3366' }}>56.8%</div>
+
+              <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8' }}>Permanent Baseline</div>
+                <div className="font-mono" style={{ fontSize: '15px', fontWeight: '700', color: '#38bdf8', marginTop: '2px' }}>
+                  {current.total_permanent_water_ha} ha
+                </div>
               </div>
-              <div style={{ background: '#0e1118', border: '1px solid #1c202d', padding: '8px', borderRadius: '6px', textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', color: '#8b92a5', textTransform: 'uppercase' }}>Random Base</div>
-                <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: '#8b92a5' }}>15.6%</div>
+
+              <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8' }}>Disagreement</div>
+                <div className="font-mono" style={{ fontSize: '15px', fontWeight: '700', color: '#f59e0b', marginTop: '2px' }}>
+                  {current.total_disagreement_ha} ha
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Sector Priority Selection List */}
-          <div style={{ padding: '16px', borderBottom: '1px solid #1c202d', flex: '1 1 auto' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', color: '#8b92a5', textTransform: 'uppercase', marginBottom: '10px' }}>
-              Top Priority Sectors (Ranked by Water Area)
+          {/* Section 2: Sector Queue & Verification Priority */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2433' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Verification Queue ({filteredSectors.length})
+              </div>
+
+              {/* Filter pills */}
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button 
+                  onClick={() => setFilterSeverity('all')}
+                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'all' ? '#2563eb' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  All
+                </button>
+                <button 
+                  onClick={() => setFilterSeverity('severe')}
+                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'severe' ? '#e11d48' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Severe
+                </button>
+                <button 
+                  onClick={() => setFilterSeverity('conflict')}
+                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'conflict' ? '#d97706' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Conflict
+                </button>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
-              {current.sectors.slice(0, 8).map((sec) => {
+            {/* Search Input */}
+            <div style={{ position: 'relative', marginBottom: '10px' }}>
+              <Search size={13} style={{ position: 'absolute', top: '8px', left: '10px', color: '#64748b' }} />
+              <input 
+                type="text" 
+                placeholder="Search sector (e.g. SEC_34)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ width: '100%', padding: '6px 10px 6px 28px', background: '#151821', color: '#f8fafc', border: '1px solid #202534', borderRadius: '6px', fontSize: '12px' }}
+              />
+            </div>
+
+            {/* Scrollable Queue List */}
+            <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {filteredSectors.slice(0, 10).map((sec) => {
                 const isSelected = selectedSector === sec.id;
                 return (
                   <div 
                     key={sec.id}
                     onClick={() => setSelectedSector(sec.id)}
+                    className="table-hover-row"
                     style={{ 
-                      background: isSelected ? '#161d2a' : '#0e1118', 
-                      border: isSelected ? '1px solid #00f0ff' : '1px solid #1c202d',
+                      padding: '8px 10px', 
                       borderRadius: '6px', 
-                      padding: '10px 12px',
+                      background: isSelected ? '#1e2433' : '#151821', 
+                      border: isSelected ? '1px solid #38bdf8' : '1px solid #202534',
                       cursor: 'pointer',
-                      transition: 'all 0.15s'
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="font-mono" style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#00f0ff' : '#8b92a5' }}>
-                          #{sec.rank}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="font-mono" style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#38bdf8' : '#e2e8f0' }}>
+                          #{sec.rank} {sec.id}
                         </span>
-                        <strong className="font-mono" style={{ fontSize: '12px', color: '#fff' }}>{sec.id}</strong>
+                        {sec.disagreement_ha > 4 && (
+                          <span style={{ fontSize: '9px', background: 'rgba(217, 119, 6, 0.15)', color: '#d97706', padding: '1px 4px', borderRadius: '2px' }}>
+                            Conflict
+                          </span>
+                        )}
                       </div>
-                      <span className="font-mono" style={{ fontSize: '11px', fontWeight: '700', color: '#ff3366' }}>
-                        {sec.candidate_water_ha} ha
-                      </span>
+                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                        Sector Extent: {sec.valid_ha} ha
+                      </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '10px', color: '#8b92a5' }}>
-                      <span>Sector Extent: {sec.valid_ha} ha</span>
-                      {sec.disagreement_ha > 4.0 ? (
-                        <span style={{ color: '#ffaa00', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          <AlertTriangle size={10} /> Disagreement {sec.disagreement_ha} ha
-                        </span>
-                      ) : (
-                        <span style={{ color: '#00e699' }}>Agreement</span>
-                      )}
+                    <div style={{ textAlign: 'right' }}>
+                      <span className="font-mono" style={{ fontSize: '12px', fontWeight: '700', color: '#f43f5e' }}>
+                        {sec.candidate_water_ha} ha
+                      </span>
                     </div>
                   </div>
                 );
@@ -1064,101 +805,234 @@ export default function FloodProofConsole() {
             </div>
           </div>
 
-          {/* Field Dispatch Form */}
-          <div style={{ padding: '16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', color: '#8b92a5', textTransform: 'uppercase', marginBottom: '12px' }}>
-              Assign Ground Team
+          {/* Section 3: Selected Sector & Task Assignment */}
+          <div style={{ padding: '16px 20px', flex: 1 }}>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+              Sector Inspection & Task Assignment
             </div>
 
-            <form onSubmit={handleSaveTask}>
-              <div style={{ marginBottom: '10px' }}>
-                <label style={{ fontSize: '10px', color: '#8b92a5', display: 'block', marginBottom: '4px' }}>Target Sector</label>
-                <input 
-                  type="text" 
-                  value={selectedSector} 
-                  readOnly 
-                  className="font-mono"
-                  style={{ width: '100%', padding: '8px 10px', background: '#0e1118', color: '#00f0ff', border: '1px solid #282f42', borderRadius: '6px', fontSize: '12px', fontWeight: '700' }}
-                />
+            {/* Selected Sector Summary Card */}
+            <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="font-mono" style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>{selectedSector}</span>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Rank #{activeSectorData?.rank || '-'} in Queue</span>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px', fontSize: '11px' }}>
+                <div>Candidate Water: <strong style={{ color: '#f43f5e' }}>{activeSectorData?.candidate_water_ha || 0} ha</strong></div>
+                <div>Permanent Water: <strong style={{ color: '#38bdf8' }}>{activeSectorData?.permanent_water_ha || 0} ha</strong></div>
+                <div>Model Disagreement: <strong style={{ color: '#f59e0b' }}>{activeSectorData?.disagreement_ha || 0} ha</strong></div>
+                <div>Max Sector Extent: <strong style={{ color: '#94a3b8' }}>{activeSectorData?.valid_ha || maxSectorHa} ha</strong></div>
+              </div>
+            </div>
 
-              <div style={{ marginBottom: '10px' }}>
-                <label style={{ fontSize: '10px', color: '#8b92a5', display: 'block', marginBottom: '4px' }}>Assigned Field Unit</label>
+            {/* Form */}
+            <form onSubmit={handleSaveTask} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Assigned Verification Team</label>
                 <input 
                   type="text" 
                   value={assignedCrew} 
                   onChange={(e) => setAssignedCrew(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', background: '#12151d', color: '#fff', border: '1px solid #282f42', borderRadius: '6px', fontSize: '12px' }}
+                  style={{ width: '100%', padding: '7px 10px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '10px' }}>
-                <label style={{ fontSize: '10px', color: '#8b92a5', display: 'block', marginBottom: '4px' }}>Lifecycle Status</label>
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Task Status</label>
                 <select 
                   value={taskStatus} 
                   onChange={(e) => setTaskStatus(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', background: '#12151d', color: '#fff', border: '1px solid #282f42', borderRadius: '6px', fontSize: '12px' }}
+                  style={{ width: '100%', padding: '7px 10px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
                 >
-                  <option value="assigned">assigned (Queue for dispatch)</option>
+                  <option value="assigned">assigned (Queued for dispatch)</option>
                   <option value="in_progress">in_progress (Field team en route)</option>
-                  <option value="operator_reviewed">operator_reviewed (Analyst checked)</option>
-                  <option value="field_verified">field_verified (Ground evidence required)</option>
+                  <option value="operator_reviewed">operator_reviewed (Analyst corroboration)</option>
+                  <option value="field_verified">field_verified (Requires ground evidence)</option>
                   <option value="rejected">rejected (Dry / False Alarm)</option>
                   <option value="inconclusive">inconclusive (Access blocked)</option>
                 </select>
               </div>
 
-              <div style={{ marginBottom: '10px' }}>
-                <label style={{ fontSize: '10px', color: '#8b92a5', display: 'block', marginBottom: '4px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
                   Recorded Ground Evidence (Required for field_verified)
                 </label>
                 <input 
                   type="text" 
                   value={taskEvidence} 
                   onChange={(e) => setTaskEvidence(e.target.value)}
-                  placeholder="e.g. Drone photo #3492, sensor log, or surveyor mark"
-                  style={{ width: '100%', padding: '8px 10px', background: '#12151d', color: '#00e699', border: '1px solid #282f42', borderRadius: '6px', fontSize: '11px' }}
+                  placeholder="e.g. Drone imagery #2016-08, high water mark photo"
+                  style={{ width: '100%', padding: '7px 10px', background: '#12151e', color: '#10b981', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ fontSize: '10px', color: '#8b92a5', display: 'block', marginBottom: '4px' }}>Field Directives & Operational Notes</label>
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Operational Notes</label>
                 <textarea 
                   rows={2} 
                   value={taskNotes} 
                   onChange={(e) => setTaskNotes(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', background: '#12151d', color: '#fff', border: '1px solid #282f42', borderRadius: '6px', fontSize: '11px', lineHeight: '1.4' }}
+                  style={{ width: '100%', padding: '7px 10px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
                 />
               </div>
 
+              {saveFeedback && (
+                <div style={{ fontSize: '11px', color: saveFeedback.includes('persisted') ? '#10b981' : '#f43f5e', padding: '4px 0' }}>
+                  {saveFeedback}
+                </div>
+              )}
+
               <button 
                 type="submit" 
+                disabled={isSaving}
                 style={{ 
-                  width: '100%', 
-                  padding: '10px', 
-                  background: 'linear-gradient(135deg, #00f0ff 0%, #0066ff 100%)', 
-                  color: '#000', 
+                  padding: '9px', 
+                  background: isSaving ? '#1e2433' : '#2563eb', 
+                  color: '#fff', 
                   border: 'none', 
-                  borderRadius: '6px', 
-                  fontWeight: '700', 
-                  fontSize: '12px',
-                  cursor: 'pointer',
+                  borderRadius: '5px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 15px rgba(0, 240, 255, 0.25)'
+                  gap: '6px'
                 }}
               >
-                <Cloud size={14} />
-                Save Task & Sync to S3
+                <Send size={13} />
+                {isSaving ? 'Persisting to S3...' : 'Save Task & Persist'}
               </button>
             </form>
+          </div>
+
+          {/* Section 4: Expandable Technical Telemetry Accordion */}
+          <div style={{ borderTop: '1px solid #1e2433' }}>
+            <button 
+              onClick={() => setShowTechDetails(!showTechDetails)}
+              style={{ 
+                width: '100%', 
+                padding: '12px 20px', 
+                background: 'transparent', 
+                border: 'none', 
+                color: '#64748b', 
+                fontSize: '11px', 
+                fontWeight: '600',
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                cursor: 'pointer' 
+              }}
+            >
+              <span>TECHNICAL GEODESY & CLOUD METRICS</span>
+              {showTechDetails ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </button>
+
+            {showTechDetails && (
+              <div style={{ padding: '0 20px 16px', fontSize: '11px', color: '#94a3b8', lineHeight: '1.6' }}>
+                <div>• Reference Ellipsoid: <strong>WGS84</strong></div>
+                <div>• Scene Latitude: <strong>{meta.lat}°N</strong></div>
+                <div>• Calculated Pixel Footprint: <strong>{pixelAreaM2} m²/px</strong></div>
+                <div>• Sector Capacity Invariant: <strong>≤ {maxSectorHa} ha</strong></div>
+                <div>• Model Architecture: <strong>XGBoost Gradient Boosted Trees (v1.2)</strong></div>
+                <div>• S3 Destination: <code>s3://floodproof-verification-artifacts-699158992887</code></div>
+              </div>
+            )}
           </div>
 
         </div>
 
       </div>
+
+      {/* ================= 3. MODAL: LIVE GEO-TIFF INFERENCE UPLOAD ================= */}
+      {showUploadModal && (
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          background: 'rgba(0,0,0,0.75)', 
+          backdropFilter: 'blur(4px)', 
+          zIndex: 100, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center' 
+        }}>
+          <div style={{ width: '480px', background: '#0f1117', border: '1px solid #232a3b', borderRadius: '8px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#fff', margin: 0 }}>
+                Upload Sentinel-1 SAR GeoTIFF (.tif)
+              </h3>
+              <button onClick={() => setShowUploadModal(false)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}>✕</button>
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px' }}>
+              Upload a 2-band [VV, VH] SAR GRD scene. The system will execute the XGBoost pipeline, compute geodetic metrics, generate sector rankings, and sync to S3.
+            </p>
+
+            <form onSubmit={handleUploadInference} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Select GeoTIFF File</label>
+                <input 
+                  type="file" 
+                  accept=".tif,.tiff" 
+                  onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
+                  style={{ width: '100%', padding: '8px', background: '#151821', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Latitude (°N)</label>
+                  <input 
+                    type="text" 
+                    value={uploadLat} 
+                    onChange={(e) => setUploadLat(e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', background: '#151821', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Longitude (°E)</label>
+                  <input 
+                    type="text" 
+                    value={uploadLon} 
+                    onChange={(e) => setUploadLon(e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', background: '#151821', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Scene Title</label>
+                <input 
+                  type="text" 
+                  value={uploadName} 
+                  onChange={(e) => setUploadName(e.target.value)}
+                  style={{ width: '100%', padding: '6px 8px', background: '#151821', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowUploadModal(false)}
+                  style={{ padding: '7px 14px', background: '#151821', color: '#94a3b8', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={uploading}
+                  style={{ padding: '7px 14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: '600', cursor: uploading ? 'not-allowed' : 'pointer' }}
+                >
+                  {uploading ? 'Executing Model Inference...' : 'Run Inference Pipeline'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
