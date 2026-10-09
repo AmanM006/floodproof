@@ -39,11 +39,12 @@ ln -sf /opt/floodproof/venv/bin/python /usr/local/bin/python
 ln -sf /opt/floodproof/venv/bin/python3 /usr/local/bin/python3
 ln -sf /opt/floodproof/venv/bin/python /usr/bin/python
 
-# 7. Install Node dependencies and start Next.js application
+# 7. Install Node dependencies from package-lock and build production bundle
 cd /opt/floodproof/web
-npm install
+npm ci || npm install
+npm run build
 
-# 8. Create systemd service for FloodProof Next.js backend
+# 8. Create systemd service for FloodProof Next.js production server
 cat << 'EOF' > /etc/systemd/system/floodproof.service
 [Unit]
 Description=FloodProof Satellite Operator Workspace
@@ -53,10 +54,10 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/floodproof/web
-Environment=NODE_ENV=development
+Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=PATH=/opt/floodproof/venv/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/npm run dev
+ExecStart=/usr/bin/npm run start
 Restart=always
 RestartSec=5
 

@@ -6,6 +6,7 @@ import util from 'util';
 
 const execFilePromise = util.promisify(execFile);
 const TASKS_PATH = path.join(process.cwd(), '..', 'reports', 'verification_tasks.json');
+const SYNC_STATE_PATH = path.join(process.cwd(), '..', 'reports', 'sync_state.json');
 const S3_BUCKET = 'floodproof-verification-artifacts-699158992887';
 
 // Strict state transition graph
@@ -19,11 +20,33 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   'inconclusive': ['assigned']
 };
 
+function getPersistedSyncState(): boolean {
+  if (fs.existsSync(SYNC_STATE_PATH)) {
+    try {
+      const state = JSON.parse(fs.readFileSync(SYNC_STATE_PATH, 'utf-8'));
+      return state.cloud_synced === true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function setPersistedSyncState(synced: boolean) {
+  try {
+    fs.writeFileSync(SYNC_STATE_PATH, JSON.stringify({ cloud_synced: synced, updated_at: new Date().toISOString() }), 'utf-8');
+  } catch (err) {
+    console.warn('Failed to write sync_state.json:', err);
+  }
+}
+
 async function loadTasksWithS3Fallback(): Promise<{ tasks: any[]; cloud_synced: boolean }> {
+  // If local tasks file exists, check persisted sync state instead of blindly assuming true
   if (fs.existsSync(TASKS_PATH)) {
     try {
       const data = JSON.parse(fs.readFileSync(TASKS_PATH, 'utf-8'));
-      return { tasks: Array.isArray(data) ? data : [], cloud_synced: true };
+      const isSynced = getPersistedSyncState();
+      return { tasks: Array.isArray(data) ? data : [], cloud_synced: isSynced };
     } catch (e) {
       console.warn('Local tasks file corrupt, attempting S3 pull recovery...');
     }
@@ -35,12 +58,14 @@ async function loadTasksWithS3Fallback(): Promise<{ tasks: any[]; cloud_synced: 
     await execFilePromise('aws', awsArgs, { shell: false });
     if (fs.existsSync(TASKS_PATH)) {
       const recovered = JSON.parse(fs.readFileSync(TASKS_PATH, 'utf-8'));
+      setPersistedSyncState(true);
       return { tasks: Array.isArray(recovered) ? recovered : [], cloud_synced: true };
     }
   } catch (err) {
     console.warn('S3 pull recovery unavailable:', err);
   }
 
+  setPersistedSyncState(false);
   return { tasks: [], cloud_synced: false };
 }
 
@@ -49,15 +74,18 @@ async function syncToS3WithRetry(retries = 2, delayMs = 300): Promise<{ success:
     try {
       const awsArgs = ['s3', 'cp', TASKS_PATH, `s3://${S3_BUCKET}/tasks/verification_tasks.json`];
       await execFilePromise('aws', awsArgs, { shell: false });
+      setPersistedSyncState(true);
       return { success: true, error: null };
     } catch (err: any) {
       if (attempt <= retries) {
         await new Promise((r) => setTimeout(r, delayMs * attempt));
       } else {
+        setPersistedSyncState(false);
         return { success: false, error: err.message || 'AWS S3 sync failed after retries' };
       }
     }
   }
+  setPersistedSyncState(false);
   return { success: false, error: 'S3 sync exhausted' };
 }
 
@@ -163,6 +191,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: newStatus,
           evidence: task.evidence || '',
           notes: task.notes || '',
+          simulated_demonstration: task.simulated_demonstration !== undefined ? Boolean(task.simulated_demonstration) : true,
           created_at: timestamp,
           updated_at: timestamp,
           history: [{

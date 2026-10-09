@@ -53,6 +53,10 @@ interface Scene {
     lat: number;
     lon: number;
     crs?: string;
+    origin_lon?: number;
+    origin_lat?: number;
+    res_deg_x?: number;
+    res_deg_y?: number;
   };
   geodesy?: {
     pixel_area_m2: number;
@@ -64,8 +68,11 @@ interface Scene {
   total_permanent_water_ha: number;
   total_disagreement_ha: number;
   baseline_status?: string;
+  has_permanent_baseline?: boolean;
+  water_label?: string;
   img_sar_b64: string;
   img_cand_water_b64: string;
+  img_perm_water_b64?: string;
   img_disagreement_b64: string;
   sectors: Sector[];
   timings?: {
