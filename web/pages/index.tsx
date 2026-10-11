@@ -197,7 +197,7 @@ export default function SatelliteWorkspace() {
 
   // Viewport container sizing
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 620, height: 620 });
+  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 512, height: 512 });
 
   // Initial load
   useEffect(() => {
@@ -212,8 +212,9 @@ export default function SatelliteWorkspace() {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
         if (width > 0 && height > 0) {
-          const dim = Math.min(width - 32, height - 32);
-          setCanvasSize({ width: Math.max(dim, 380), height: Math.max(dim, 380) });
+          // Keep a balanced canvas size that fits comfortably with margins
+          const dim = Math.min(width - 64, height - 64);
+          setCanvasSize({ width: Math.max(Math.min(dim, 620), 380), height: Math.max(Math.min(dim, 620), 380) });
         }
       }
     });
@@ -657,9 +658,9 @@ export default function SatelliteWorkspace() {
       </header>
 
       {/* ================= 2. MAIN WORKSPACE ================= */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 440px', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 460px', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
         
-        {/* ================= LEFT 2/3: FULL GEOGRAPHIC CANVAS ================= */}
+        {/* ================= LEFT: GEOGRAPHIC CANVAS & CONTROLS ================= */}
         <div 
           ref={canvasContainerRef}
           onMouseDown={handleMouseDown}
@@ -677,15 +678,18 @@ export default function SatelliteWorkspace() {
           }}
         >
           {/* Top Left: Compact Layers Control Panel */}
-          <div style={{ 
-            position: 'absolute', 
-            top: '16px', 
-            left: '20px', 
-            zIndex: 30, 
-            display: 'flex', 
-            flexDirection: 'column',
-            gap: '8px'
-          }}>
+          <div 
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            style={{ 
+              position: 'absolute', 
+              top: '16px', 
+              left: '20px', 
+              zIndex: 30, 
+              display: 'flex', 
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
             {/* Primary Toggle Pill */}
             <div style={{ 
               display: 'flex', 
@@ -847,29 +851,34 @@ export default function SatelliteWorkspace() {
           </div>
 
           {/* Top Right: Zoom, Pan & Fit Controls */}
-          <div style={{ 
-            position: 'absolute', 
-            top: '16px', 
-            right: '20px', 
-            zIndex: 30, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '4px',
-            background: 'rgba(15, 18, 26, 0.92)', 
-            backdropFilter: 'blur(8px)', 
-            border: '1px solid #232a3b', 
-            padding: '4px', 
-            borderRadius: '6px' 
-          }}>
+          <div 
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            style={{ 
+              position: 'absolute', 
+              top: '16px', 
+              right: '20px', 
+              zIndex: 30, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '4px',
+              background: 'rgba(15, 18, 26, 0.92)', 
+              backdropFilter: 'blur(8px)', 
+              border: '1px solid #232a3b', 
+              padding: '4px', 
+              borderRadius: '6px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.5)'
+            }}
+          >
             <button 
-              onClick={() => setZoomLevel((z) => Math.min(z + 0.25, 2.5))}
+              onClick={() => setZoomLevel((z) => Math.min(Math.round((z + 0.15) * 100) / 100, 3.0))}
               title="Zoom In"
               style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
             >
               <ZoomIn size={16} />
             </button>
             <button 
-              onClick={() => setZoomLevel((z) => Math.max(z - 0.25, 0.75))}
+              onClick={() => setZoomLevel((z) => Math.max(Math.round((z - 0.15) * 100) / 100, 0.4))}
               title="Zoom Out"
               style={{ background: 'transparent', border: 'none', color: '#94a3b8', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}
             >
@@ -885,14 +894,20 @@ export default function SatelliteWorkspace() {
           </div>
 
           {/* Central Geographic Canvas (Auto-Fitting & Pannable) */}
-          <div style={{ 
-            flex: 1, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            overflow: 'hidden', 
-            padding: '16px'
-          }}>
+          <div 
+            onWheel={(e) => {
+              const delta = e.deltaY > 0 ? -0.1 : 0.1;
+              setZoomLevel((z) => Math.max(0.4, Math.min(3.0, Math.round((z + delta) * 100) / 100)));
+            }}
+            style={{ 
+              flex: 1, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              overflow: 'hidden', 
+              padding: '16px'
+            }}
+          >
             <div style={{ 
               position: 'relative', 
               width: `${canvasSize.width}px`, 
@@ -1247,24 +1262,24 @@ export default function SatelliteWorkspace() {
 
           {/* Section 2: Explainable Inspection Planning & Prioritization */}
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2433' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Navigation size={13} color="#38bdf8" />
                 <span>Inspection Planning (Budget K)</span>
               </div>
-              <span className="font-mono" style={{ fontSize: '10px', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+              <span className="font-mono" style={{ fontSize: '10px', fontWeight: '600', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '2px 8px', borderRadius: '4px' }}>
                 Objective: {planObjective}
               </span>
             </div>
 
             {/* Objective & Budget K controls */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px', marginBottom: '12px' }}>
               <div>
-                <label style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Strategy</label>
+                <label style={{ fontSize: '10px', fontWeight: '600', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Strategy</label>
                 <select 
                   value={planObjective} 
                   onChange={(e) => setPlanObjective(e.target.value)}
-                  style={{ width: '100%', padding: '4px 8px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '4px', fontSize: '11px' }}
+                  style={{ width: '100%', padding: '6px 10px', background: '#12151e', color: '#f8fafc', border: '1px solid #232a3b', borderRadius: '6px', fontSize: '11px', outline: 'none' }}
                 >
                   <option value="balanced">Balanced Multi-Criteria</option>
                   <option value="infrastructure">Infrastructure First</option>
@@ -1275,9 +1290,9 @@ export default function SatelliteWorkspace() {
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8', marginBottom: '2px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '600', color: '#94a3b8', marginBottom: '4px' }}>
                   <span>Sector Budget K:</span>
-                  <strong className="font-mono" style={{ color: '#38bdf8' }}>{planBudgetK}</strong>
+                  <strong className="font-mono" style={{ color: '#38bdf8', fontSize: '12px' }}>{planBudgetK}</strong>
                 </div>
                 <input 
                   type="range" 
@@ -1285,21 +1300,21 @@ export default function SatelliteWorkspace() {
                   max="20" 
                   value={planBudgetK} 
                   onChange={(e) => setPlanBudgetK(Number(e.target.value))}
-                  style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+                  style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer', marginTop: '4px' }}
                 />
               </div>
             </div>
 
             {/* Export Dynamic Plan Action */}
-            <div style={{ marginBottom: '10px' }}>
+            <div style={{ marginBottom: '12px' }}>
               <button
                 onClick={handleExportPlan}
                 style={{
                   width: '100%',
-                  padding: '6px 10px',
-                  background: '#1a2234',
-                  border: '1px solid #2d3b55',
-                  borderRadius: '5px',
+                  padding: '7px 12px',
+                  background: 'linear-gradient(180deg, #1e293b 0%, #151d2c 100%)',
+                  border: '1px solid #334155',
+                  borderRadius: '6px',
                   color: '#38bdf8',
                   fontSize: '11px',
                   fontWeight: '600',
@@ -1308,7 +1323,7 @@ export default function SatelliteWorkspace() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  transition: 'all 0.15s ease'
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}
               >
                 <Download size={13} />
@@ -1317,36 +1332,36 @@ export default function SatelliteWorkspace() {
             </div>
 
             {/* Plan Baseline Comparison Alert */}
-            <div style={{ background: '#10141f', border: '1px solid #1e293b', borderRadius: '4px', padding: '6px 8px', fontSize: '10px', color: '#94a3b8', marginBottom: '10px' }}>
+            <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid #1e293b', borderRadius: '6px', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', lineHeight: '1.45', marginBottom: '14px' }}>
               <span style={{ color: '#38bdf8', fontWeight: '600' }}>Baseline Comparison: </span>
-              {dynamicComparisonExplanation}
+              <span>{dynamicComparisonExplanation}</span>
             </div>
 
             {/* Queue Filter Pills */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>Queue Sectors ({filteredSectors.length})</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '600', color: '#64748b' }}>Queue Sectors ({filteredSectors.length})</span>
               <div style={{ display: 'flex', gap: '4px' }}>
                 <button 
                   onClick={() => setFilterSeverity('all')}
-                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'all' ? '#2563eb' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'all' ? '#2563eb' : '#151821', color: filterSeverity === 'all' ? '#fff' : '#94a3b8', border: '1px solid #232a3b', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   All
                 </button>
                 <button 
                   onClick={() => setFilterSeverity('infra')}
-                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'infra' ? '#f97316' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'infra' ? '#ea580c' : '#151821', color: filterSeverity === 'infra' ? '#fff' : '#94a3b8', border: '1px solid #232a3b', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Infra Overlap
                 </button>
                 <button 
                   onClick={() => setFilterSeverity('large')}
-                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'large' ? '#e11d48' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'large' ? '#e11d48' : '#151821', color: filterSeverity === 'large' ? '#fff' : '#94a3b8', border: '1px solid #232a3b', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Large Area
                 </button>
                 <button 
                   onClick={() => setFilterSeverity('conflict')}
-                  style={{ padding: '2px 8px', fontSize: '10px', background: filterSeverity === 'conflict' ? '#d97706' : '#151821', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'conflict' ? '#d97706' : '#151821', color: filterSeverity === 'conflict' ? '#fff' : '#94a3b8', border: '1px solid #232a3b', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Conflict
                 </button>
@@ -1355,19 +1370,19 @@ export default function SatelliteWorkspace() {
 
             {/* Search Input */}
             <div style={{ position: 'relative', marginBottom: '10px' }}>
-              <Search size={13} style={{ position: 'absolute', top: '8px', left: '10px', color: '#64748b' }} />
+              <Search size={13} style={{ position: 'absolute', top: '9px', left: '10px', color: '#64748b' }} />
               <input 
                 type="text" 
                 placeholder="Search sector (e.g. SEC_34)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: '100%', padding: '6px 10px 6px 28px', background: '#151821', color: '#f8fafc', border: '1px solid #202534', borderRadius: '6px', fontSize: '12px' }}
+                style={{ width: '100%', padding: '6px 10px 6px 30px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '6px', fontSize: '11px', outline: 'none' }}
               />
             </div>
 
             {/* Queue rows */}
-            <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {filteredSectors.slice(0, 15).map((sec) => {
+            <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', paddingRight: '2px' }}>
+              {filteredSectors.slice(0, 20).map((sec) => {
                 const isSelected = selectedSector === sec.id;
                 const secTask = tasks.find((t) => t.chip_id === selectedKey && t.sector_id === sec.id);
                 const isTopPlan = sec.plan_rank !== undefined && sec.plan_rank <= planBudgetK;
@@ -1380,21 +1395,22 @@ export default function SatelliteWorkspace() {
                     style={{ 
                       padding: '8px 10px', 
                       borderRadius: '6px', 
-                      background: isSelected ? '#1e2433' : '#151821', 
-                      border: isSelected ? '1px solid #38bdf8' : (isTopPlan ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid #202534'),
+                      background: isSelected ? 'rgba(30, 41, 59, 0.85)' : '#131620', 
+                      border: isSelected ? '1px solid #38bdf8' : (isTopPlan ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid #1e2433'),
                       cursor: 'pointer',
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      transition: 'all 0.12s ease'
                     }}
                   >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <span className="font-mono" style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#38bdf8' : '#e2e8f0' }}>
                           #{sec.rank} {sec.id}
                         </span>
                         {isTopPlan && (
-                          <span style={{ fontSize: '9px', background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', padding: '1px 5px', borderRadius: '3px', fontWeight: '600' }}>
+                          <span style={{ fontSize: '9px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', padding: '1px 5px', borderRadius: '3px', fontWeight: '700' }}>
                             PLAN #{sec.plan_rank}
                           </span>
                         )}
@@ -1415,20 +1431,20 @@ export default function SatelliteWorkspace() {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {sec.inspection_rationale || (sec.candidate_water_ha > 15 ? 'Large candidate-water area' : 'Moderate candidate-water extent')}
                       </div>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
-                      <span className="font-mono" style={{ fontSize: '12px', fontWeight: '700', color: '#f43f5e' }}>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <span className="font-mono" style={{ fontSize: '12px', fontWeight: '700', color: '#f43f5e', display: 'block' }}>
                         {sec.candidate_water_ha} ha
                       </span>
-                      {sec.road_overlap_m && sec.road_overlap_m > 0 && (
-                        <div style={{ fontSize: '9px', color: '#f97316' }}>
-                          {sec.road_overlap_m.toFixed(0)}m road
+                      {(sec.road_overlap_m ?? 0) > 0 ? (
+                        <div style={{ fontSize: '9px', color: '#f97316', fontWeight: '500' }}>
+                          {Number(sec.road_overlap_m).toFixed(0)}m road
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 );
