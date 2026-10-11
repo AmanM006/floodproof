@@ -52,7 +52,7 @@ However, turning satellite radar observations into actionable disaster managemen
 │                            │                           │
 │  ┌─────────────────────────▼────────────────────────┐  │
 │  │ Python Geospatial Processing (execFile)          │  │
-│  │ - Preprocessed dB Backscatter Calibration        │  │
+│  │ - Preprocessed SAR backscatter in dB             │  │
 │  │ - 3x3 Spatial Box Mean & Variance Features       │  │
 │  │ - JRC Permanent Water Baseline Filtering         │  │
 │  │ - OpenStreetMap Geometry & Hole Subtraction      │  │
