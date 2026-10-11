@@ -160,6 +160,7 @@ export default function SatelliteWorkspace() {
   // Map layer controls
   const [radarOpacity, setRadarOpacity] = useState<number>(85);
   const [predictionOpacity, setPredictionOpacity] = useState<number>(65);
+  const [showWaterMask, setShowWaterMask] = useState<boolean>(true);
   const [showPermanentWater, setShowPermanentWater] = useState<boolean>(true);
   const [showDisagreement, setShowDisagreement] = useState<boolean>(false);
   const [showRoads, setShowRoads] = useState<boolean>(true);
@@ -926,8 +927,21 @@ export default function SatelliteWorkspace() {
 
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#e11d48' }}></span>
+                    <span>Water Mask (Candidate Water)</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={showWaterMask} 
+                    onChange={(e) => setShowWaterMask(e.target.checked)}
+                    style={{ accentColor: '#e11d48' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#0284c7' }}></span>
-                    <span>Permanent Baseline</span>
+                    <span>Permanent Water (JRC Baseline)</span>
                   </div>
                   <input 
                     type="checkbox" 
@@ -1091,19 +1105,21 @@ export default function SatelliteWorkspace() {
               />
 
               {/* Layer 2: Candidate Flood Water Mask (Crimson RGBA, Independent Toggle) */}
-              <img 
-                src={`data:image/png;base64,${current.img_cand_water_b64}`}
-                alt="Candidate Flood Water Mask"
-                style={{ 
-                  position: 'absolute', 
-                  top: 0, 
-                  left: 0, 
-                  width: '100%', 
-                  height: '100%', 
-                  objectFit: 'contain', 
-                  opacity: predictionOpacity / 100
-                }}
-              />
+              {showWaterMask && (
+                <img 
+                  src={`data:image/png;base64,${current.img_cand_water_b64}`}
+                  alt="Candidate Flood Water Mask"
+                  style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain', 
+                    opacity: predictionOpacity / 100
+                  }}
+                />
+              )}
 
               {/* Layer 2B: Permanent Water Baseline (Cyan RGBA, Controlled by showPermanentWater) */}
               {showPermanentWater && current.img_perm_water_b64 && (
@@ -1376,19 +1392,6 @@ export default function SatelliteWorkspace() {
         {/* ================= RIGHT 1/3: FOCUSED INSPECTION & TASK PANEL ================= */}
         <div style={{ background: currentTheme.sidebarBg, display: 'flex', flexDirection: 'column', overflowY: 'auto', transition: 'background 0.25s ease' }}>
           
-          {/* Active Layout Architecture Banner */}
-          <div style={{ padding: '8px 20px', background: currentTheme.cardBg, borderBottom: `1px solid ${currentTheme.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Layout size={12} color={currentTheme.accent} />
-              <span style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: currentTheme.accent }}>
-                Layout: {currentTheme.layoutLabel}
-              </span>
-            </div>
-            <span style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
-              {currentTheme.layoutColumns}
-            </span>
-          </div>
-
           {/* Section 1: Scene Overview */}
           <div style={{ padding: '16px 20px', borderBottom: `1px solid ${currentTheme.cardBorder}` }}>
             <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
