@@ -29,7 +29,8 @@ import {
   FileText,
   Move,
   Compass,
-  Navigation
+  Navigation,
+  Palette
 } from 'lucide-react';
 
 interface Sector {
@@ -194,6 +195,10 @@ export default function SatelliteWorkspace() {
   const [uploadJrcFile, setUploadJrcFile] = useState<File | null>(null);
   const [uploadName, setUploadName] = useState<string>('Uploaded Sentinel-1 SAR Scene');
   const [uploading, setUploading] = useState<boolean>(false);
+
+  // Aesthetic Dashboard Theme selector
+  type ThemeKey = 'tactical' | 'apple_dark' | 'cyber_sentinel' | 'swiss_minimal' | 'nasa_glass';
+  const [dashboardTheme, setDashboardTheme] = useState<ThemeKey>('tactical');
 
   // Viewport container sizing
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -541,6 +546,125 @@ export default function SatelliteWorkspace() {
     URL.revokeObjectURL(url);
   };
 
+  // Aesthetic Themes Config
+  const themeConfigs: Record<ThemeKey, {
+    label: string;
+    tag: string;
+    headerBg: string;
+    headerBorder: string;
+    canvasBg: string;
+    canvasBorder: string;
+    canvasShadow: string;
+    sidebarBg: string;
+    cardBg: string;
+    cardBorder: string;
+    accent: string;
+    accentBg: string;
+    accentBorder: string;
+    pillBg: string;
+    subtext: string;
+    highlightBorder: string;
+    fontFamily: string;
+  }> = {
+    tactical: {
+      label: '1. Tactical Defense Ops',
+      tag: 'Palantir / Foundry Dark',
+      headerBg: '#0b0e14',
+      headerBorder: '#1c2436',
+      canvasBg: '#05070a',
+      canvasBorder: '#1a2233',
+      canvasShadow: '0 8px 32px rgba(0,0,0,0.85)',
+      sidebarBg: '#0d111a',
+      cardBg: '#131824',
+      cardBorder: '#1f293d',
+      accent: '#38bdf8',
+      accentBg: 'rgba(56, 189, 248, 0.12)',
+      accentBorder: 'rgba(56, 189, 248, 0.35)',
+      pillBg: 'rgba(15, 23, 42, 0.94)',
+      subtext: '#94a3b8',
+      highlightBorder: '#38bdf8',
+      fontFamily: 'inherit'
+    },
+    apple_dark: {
+      label: '2. Apple Slate Pro',
+      tag: 'Cupertino Pro Charcoal',
+      headerBg: '#16181f',
+      headerBorder: '#272a36',
+      canvasBg: '#0f1117',
+      canvasBorder: '#242735',
+      canvasShadow: '0 12px 40px rgba(0,0,0,0.6)',
+      sidebarBg: '#181a24',
+      cardBg: '#202330',
+      cardBorder: '#2e3245',
+      accent: '#818cf8',
+      accentBg: 'rgba(129, 140, 248, 0.14)',
+      accentBorder: 'rgba(129, 140, 248, 0.4)',
+      pillBg: 'rgba(28, 32, 46, 0.92)',
+      subtext: '#a1a1aa',
+      highlightBorder: '#818cf8',
+      fontFamily: 'inherit'
+    },
+    cyber_sentinel: {
+      label: '3. Cyber Sentinel Neon',
+      tag: 'Futuristic Radar & HUD',
+      headerBg: '#040b11',
+      headerBorder: '#0e3a4f',
+      canvasBg: '#020508',
+      canvasBorder: '#0a3244',
+      canvasShadow: '0 0 40px rgba(6, 182, 212, 0.15)',
+      sidebarBg: '#050d14',
+      cardBg: '#081724',
+      cardBorder: '#0e3f5c',
+      accent: '#06b6d4',
+      accentBg: 'rgba(6, 182, 212, 0.15)',
+      accentBorder: 'rgba(6, 182, 212, 0.5)',
+      pillBg: 'rgba(4, 18, 28, 0.95)',
+      subtext: '#7dd3fc',
+      highlightBorder: '#06b6d4',
+      fontFamily: 'inherit'
+    },
+    swiss_minimal: {
+      label: '4. Swiss Studio Neutral',
+      tag: 'Linear / Vercel Minimalist',
+      headerBg: '#000000',
+      headerBorder: '#262626',
+      canvasBg: '#000000',
+      canvasBorder: '#1f1f1f',
+      canvasShadow: '0 8px 30px rgba(0,0,0,0.95)',
+      sidebarBg: '#0a0a0a',
+      cardBg: '#121212',
+      cardBorder: '#262626',
+      accent: '#ffffff',
+      accentBg: 'rgba(255, 255, 255, 0.1)',
+      accentBorder: 'rgba(255, 255, 255, 0.35)',
+      pillBg: 'rgba(18, 18, 18, 0.95)',
+      subtext: '#a3a3a3',
+      highlightBorder: '#ffffff',
+      fontFamily: 'inherit'
+    },
+    nasa_glass: {
+      label: '5. NASA Earth Aero',
+      tag: 'Aerospace Glassmorphic',
+      headerBg: '#0a1226',
+      headerBorder: '#1e335e',
+      canvasBg: '#060b18',
+      canvasBorder: '#162747',
+      canvasShadow: '0 12px 36px rgba(30, 58, 138, 0.3)',
+      sidebarBg: '#0c1630',
+      cardBg: '#111f42',
+      cardBorder: '#1d3568',
+      accent: '#60a5fa',
+      accentBg: 'rgba(96, 165, 250, 0.15)',
+      accentBorder: 'rgba(96, 165, 250, 0.4)',
+      pillBg: 'rgba(15, 27, 56, 0.94)',
+      subtext: '#93c5fd',
+      highlightBorder: '#60a5fa',
+      fontFamily: 'inherit'
+    }
+  };
+
+  const currentTheme = themeConfigs[dashboardTheme];
+
   return (
     <div style={{ minHeight: '100vh', width: '100%', background: '#090a0d', color: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
       <Head>
@@ -551,18 +675,19 @@ export default function SatelliteWorkspace() {
       {/* ================= 1. RESTRAINED WORKSPACE HEADER ================= */}
       <header style={{ 
         height: '56px', 
-        borderBottom: '1px solid #1e2433', 
+        borderBottom: `1px solid ${currentTheme.headerBorder}`, 
         padding: '0 20px', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between', 
-        background: '#0d1017'
+        background: currentTheme.headerBg,
+        transition: 'all 0.25s ease'
       }}>
         {/* Brand & Scene Selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '16px', fontWeight: '700', letterSpacing: '-0.02em', color: '#ffffff' }}>FloodProof</span>
-            <span style={{ fontSize: '11px', color: '#64748b', borderLeft: '1px solid #232a3b', paddingLeft: '10px' }}>Satellite Analysis Workspace</span>
+            <span style={{ fontSize: '16px', fontWeight: '700', letterSpacing: '-0.02em', color: currentTheme.accent }}>FloodProof</span>
+            <span style={{ fontSize: '11px', color: '#64748b', borderLeft: `1px solid ${currentTheme.headerBorder}`, paddingLeft: '10px' }}>Satellite Analysis Workspace</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -577,9 +702,9 @@ export default function SatelliteWorkspace() {
               }}
               style={{ 
                 padding: '6px 12px', 
-                background: '#151923', 
+                background: currentTheme.cardBg, 
                 color: '#f8fafc', 
-                border: '1px solid #232a3b', 
+                border: `1px solid ${currentTheme.headerBorder}`, 
                 borderRadius: '6px', 
                 fontSize: '12px', 
                 fontWeight: '500', 
@@ -608,15 +733,44 @@ export default function SatelliteWorkspace() {
           </div>
         </div>
 
-        {/* Global Actions */}
+        {/* Global Actions + Aesthetic Theme Switcher */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          
+          {/* Aesthetic Theme Quick Switcher Pill */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: currentTheme.cardBg, border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', padding: '3px 8px' }}>
+            <Palette size={13} color={currentTheme.accent} />
+            <span style={{ fontSize: '11px', color: currentTheme.subtext, fontWeight: '600' }}>Theme:</span>
+            <select 
+              value={dashboardTheme}
+              onChange={(e) => setDashboardTheme(e.target.value as ThemeKey)}
+              style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                color: '#f8fafc', 
+                fontSize: '11px', 
+                fontWeight: '600', 
+                cursor: 'pointer',
+                outline: 'none',
+                padding: '2px 4px'
+              }}
+            >
+              <option value="tactical" style={{ background: '#0b0e14', color: '#fff' }}>1. Tactical Defense Ops</option>
+              <option value="apple_dark" style={{ background: '#16181f', color: '#fff' }}>2. Apple Slate Pro</option>
+              <option value="cyber_sentinel" style={{ background: '#040b11', color: '#fff' }}>3. Cyber Sentinel Neon</option>
+              <option value="swiss_minimal" style={{ background: '#000000', color: '#fff' }}>4. Swiss Studio Neutral</option>
+              <option value="nasa_glass" style={{ background: '#0a1226', color: '#fff' }}>5. NASA Earth Aero</option>
+            </select>
+          </div>
+
+          <div style={{ height: '16px', width: '1px', background: currentTheme.headerBorder }}></div>
+
           <button 
             onClick={() => setShowUploadModal(true)}
             style={{ 
               padding: '6px 12px', 
-              background: '#151923', 
+              background: currentTheme.cardBg, 
               color: '#94a3b8', 
-              border: '1px solid #232a3b', 
+              border: `1px solid ${currentTheme.cardBorder}`, 
               borderRadius: '6px', 
               fontSize: '12px', 
               cursor: 'pointer',
@@ -633,9 +787,9 @@ export default function SatelliteWorkspace() {
             onClick={exportManifest}
             style={{ 
               padding: '6px 12px', 
-              background: '#151923', 
+              background: currentTheme.cardBg, 
               color: '#94a3b8', 
-              border: '1px solid #232a3b', 
+              border: `1px solid ${currentTheme.cardBorder}`, 
               borderRadius: '6px', 
               fontSize: '12px', 
               cursor: 'pointer',
@@ -648,7 +802,7 @@ export default function SatelliteWorkspace() {
             Export Tasks JSON
           </button>
 
-          <div style={{ height: '16px', width: '1px', background: '#232a3b' }}></div>
+          <div style={{ height: '16px', width: '1px', background: currentTheme.headerBorder }}></div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#64748b' }}>
             <span style={{ height: '7px', width: '7px', borderRadius: '50%', background: cloudSynced ? '#10b981' : '#f59e0b', display: 'inline-block' }}></span>
@@ -668,13 +822,14 @@ export default function SatelliteWorkspace() {
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           style={{ 
-            background: '#07080b', 
+            background: currentTheme.canvasBg, 
             position: 'relative', 
             display: 'flex', 
             flexDirection: 'column', 
-            borderRight: '1px solid #1e2433',
+            borderRight: `1px solid ${currentTheme.canvasBorder}`,
             overflow: 'hidden',
-            cursor: isDragging ? 'grabbing' : 'grab'
+            cursor: isDragging ? 'grabbing' : 'grab',
+            transition: 'background 0.25s ease'
           }}
         >
           {/* Top Left: Compact Layers Control Panel */}
@@ -695,9 +850,9 @@ export default function SatelliteWorkspace() {
               display: 'flex', 
               alignItems: 'center', 
               gap: '12px', 
-              background: 'rgba(15, 18, 26, 0.94)', 
-              backdropFilter: 'blur(8px)', 
-              border: '1px solid #232a3b', 
+              background: currentTheme.pillBg, 
+              backdropFilter: 'blur(10px)', 
+              border: `1px solid ${currentTheme.cardBorder}`, 
               padding: '7px 12px', 
               borderRadius: '8px',
               boxShadow: '0 4px 16px rgba(0,0,0,0.5)'
@@ -716,12 +871,12 @@ export default function SatelliteWorkspace() {
                   gap: '6px'
                 }}
               >
-                <Layers size={14} color="#60a5fa" />
+                <Layers size={14} color={currentTheme.accent} />
                 <span>Layers & Opacity</span>
                 <ChevronDown size={14} color="#94a3b8" />
               </button>
 
-              <div style={{ height: '14px', width: '1px', background: '#232a3b' }}></div>
+              <div style={{ height: '14px', width: '1px', background: currentTheme.cardBorder }}></div>
 
               {/* Opacity Sliders */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -732,7 +887,7 @@ export default function SatelliteWorkspace() {
                   max="100" 
                   value={radarOpacity} 
                   onChange={(e) => setRadarOpacity(Number(e.target.value))}
-                  style={{ width: '60px', accentColor: '#2563eb', cursor: 'pointer' }}
+                  style={{ width: '60px', accentColor: currentTheme.accent, cursor: 'pointer' }}
                 />
                 <span className="font-mono" style={{ fontSize: '10px', color: '#64748b' }}>{radarOpacity}%</span>
               </div>
@@ -754,9 +909,9 @@ export default function SatelliteWorkspace() {
             {/* Dropdown Menu for Toggles */}
             {showLayersDropdown && (
               <div style={{ 
-                background: 'rgba(15, 18, 26, 0.96)', 
-                backdropFilter: 'blur(10px)', 
-                border: '1px solid #232a3b', 
+                background: currentTheme.pillBg, 
+                backdropFilter: 'blur(12px)', 
+                border: `1px solid ${currentTheme.cardBorder}`, 
                 borderRadius: '8px', 
                 padding: '12px', 
                 width: '270px',
@@ -1219,10 +1374,10 @@ export default function SatelliteWorkspace() {
         </div>
 
         {/* ================= RIGHT 1/3: FOCUSED INSPECTION & TASK PANEL ================= */}
-        <div style={{ background: '#0f1117', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+        <div style={{ background: currentTheme.sidebarBg, display: 'flex', flexDirection: 'column', overflowY: 'auto', transition: 'background 0.25s ease' }}>
           
           {/* Section 1: Scene Overview */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2433' }}>
+          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${currentTheme.cardBorder}` }}>
             <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
               Scene Details
             </div>
@@ -1230,12 +1385,12 @@ export default function SatelliteWorkspace() {
               {meta.name}
             </div>
             <div style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <MapPin size={13} /> {meta.region} ({meta.lat}°N, {meta.lon}°E)
+              <MapPin size={13} color={currentTheme.accent} /> {meta.region} ({meta.lat}°N, {meta.lon}°E)
             </div>
 
             {/* Stats pills */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '12px' }}>
-              <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
+              <div style={{ background: currentTheme.cardBg, border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', padding: '8px' }}>
                 <div style={{ fontSize: '10px', color: '#94a3b8' }}>
                   {current.has_permanent_baseline === false || (current.total_permanent_water_ha || 0) === 0 ? 'Surface Water' : 'Candidate Water'}
                 </div>
@@ -1244,14 +1399,14 @@ export default function SatelliteWorkspace() {
                 </div>
               </div>
 
-              <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
+              <div style={{ background: currentTheme.cardBg, border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', padding: '8px' }}>
                 <div style={{ fontSize: '10px', color: '#94a3b8' }}>Permanent Base</div>
-                <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: '#38bdf8', marginTop: '2px' }}>
+                <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: currentTheme.accent, marginTop: '2px' }}>
                   {current.total_permanent_water_ha} ha
                 </div>
               </div>
 
-              <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '8px' }}>
+              <div style={{ background: currentTheme.cardBg, border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', padding: '8px' }}>
                 <div style={{ fontSize: '10px', color: '#94a3b8' }}>Disagreement</div>
                 <div className="font-mono" style={{ fontSize: '14px', fontWeight: '700', color: '#f59e0b', marginTop: '2px' }}>
                   {current.total_disagreement_ha} ha
@@ -1261,13 +1416,13 @@ export default function SatelliteWorkspace() {
           </div>
 
           {/* Section 2: Explainable Inspection Planning & Prioritization */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2433' }}>
+          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${currentTheme.cardBorder}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Navigation size={13} color="#38bdf8" />
+                <Navigation size={13} color={currentTheme.accent} />
                 <span>Inspection Planning (Budget K)</span>
               </div>
-              <span className="font-mono" style={{ fontSize: '10px', fontWeight: '600', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '2px 8px', borderRadius: '4px' }}>
+              <span className="font-mono" style={{ fontSize: '10px', fontWeight: '600', color: currentTheme.accent, background: currentTheme.accentBg, border: `1px solid ${currentTheme.accentBorder}`, padding: '2px 8px', borderRadius: '4px' }}>
                 Objective: {planObjective}
               </span>
             </div>
@@ -1279,7 +1434,7 @@ export default function SatelliteWorkspace() {
                 <select 
                   value={planObjective} 
                   onChange={(e) => setPlanObjective(e.target.value)}
-                  style={{ width: '100%', padding: '6px 10px', background: '#12151e', color: '#f8fafc', border: '1px solid #232a3b', borderRadius: '6px', fontSize: '11px', outline: 'none' }}
+                  style={{ width: '100%', padding: '6px 10px', background: currentTheme.cardBg, color: '#f8fafc', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', fontSize: '11px', outline: 'none' }}
                 >
                   <option value="balanced">Balanced Multi-Criteria</option>
                   <option value="infrastructure">Infrastructure First</option>
@@ -1292,7 +1447,7 @@ export default function SatelliteWorkspace() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '600', color: '#94a3b8', marginBottom: '4px' }}>
                   <span>Sector Budget K:</span>
-                  <strong className="font-mono" style={{ color: '#38bdf8', fontSize: '12px' }}>{planBudgetK}</strong>
+                  <strong className="font-mono" style={{ color: currentTheme.accent, fontSize: '12px' }}>{planBudgetK}</strong>
                 </div>
                 <input 
                   type="range" 
@@ -1300,7 +1455,7 @@ export default function SatelliteWorkspace() {
                   max="20" 
                   value={planBudgetK} 
                   onChange={(e) => setPlanBudgetK(Number(e.target.value))}
-                  style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer', marginTop: '4px' }}
+                  style={{ width: '100%', accentColor: currentTheme.accent, cursor: 'pointer', marginTop: '4px' }}
                 />
               </div>
             </div>
@@ -1312,10 +1467,10 @@ export default function SatelliteWorkspace() {
                 style={{
                   width: '100%',
                   padding: '7px 12px',
-                  background: 'linear-gradient(180deg, #1e293b 0%, #151d2c 100%)',
-                  border: '1px solid #334155',
+                  background: currentTheme.cardBg,
+                  border: `1px solid ${currentTheme.cardBorder}`,
                   borderRadius: '6px',
-                  color: '#38bdf8',
+                  color: currentTheme.accent,
                   fontSize: '11px',
                   fontWeight: '600',
                   cursor: 'pointer',
@@ -1326,14 +1481,14 @@ export default function SatelliteWorkspace() {
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}
               >
-                <Download size={13} />
+                <Download size={13} color={currentTheme.accent} />
                 <span>Export Inspection Plan (K={planBudgetK}, {planObjective})</span>
               </button>
             </div>
 
             {/* Plan Baseline Comparison Alert */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1px solid #1e293b', borderRadius: '6px', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', lineHeight: '1.45', marginBottom: '14px' }}>
-              <span style={{ color: '#38bdf8', fontWeight: '600' }}>Baseline Comparison: </span>
+            <div style={{ background: currentTheme.cardBg, border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', lineHeight: '1.45', marginBottom: '14px' }}>
+              <span style={{ color: currentTheme.accent, fontWeight: '600' }}>Baseline Comparison: </span>
               <span>{dynamicComparisonExplanation}</span>
             </div>
 
@@ -1343,25 +1498,25 @@ export default function SatelliteWorkspace() {
               <div style={{ display: 'flex', gap: '4px' }}>
                 <button 
                   onClick={() => setFilterSeverity('all')}
-                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'all' ? '#2563eb' : '#151821', color: filterSeverity === 'all' ? '#fff' : '#94a3b8', border: '1px solid #232a3b', borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'all' ? (currentTheme.accent === '#ffffff' ? '#2563eb' : currentTheme.accent) : currentTheme.cardBg, color: filterSeverity === 'all' ? '#fff' : '#94a3b8', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '4px', cursor: 'pointer' }}
                 >
                   All
                 </button>
                 <button 
                   onClick={() => setFilterSeverity('infra')}
-                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'infra' ? '#ea580c' : '#151821', color: filterSeverity === 'infra' ? '#fff' : '#94a3b8', border: '1px solid #232a3b', borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'infra' ? '#ea580c' : currentTheme.cardBg, color: filterSeverity === 'infra' ? '#fff' : '#94a3b8', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Infra Overlap
                 </button>
                 <button 
                   onClick={() => setFilterSeverity('large')}
-                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'large' ? '#e11d48' : '#151821', color: filterSeverity === 'large' ? '#fff' : '#94a3b8', border: '1px solid #232a3b', borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'large' ? '#e11d48' : currentTheme.cardBg, color: filterSeverity === 'large' ? '#fff' : '#94a3b8', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Large Area
                 </button>
                 <button 
                   onClick={() => setFilterSeverity('conflict')}
-                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'conflict' ? '#d97706' : '#151821', color: filterSeverity === 'conflict' ? '#fff' : '#94a3b8', border: '1px solid #232a3b', borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: '600', background: filterSeverity === 'conflict' ? '#d97706' : currentTheme.cardBg, color: filterSeverity === 'conflict' ? '#fff' : '#94a3b8', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Conflict
                 </button>
@@ -1376,7 +1531,7 @@ export default function SatelliteWorkspace() {
                 placeholder="Search sector (e.g. SEC_34)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: '100%', padding: '6px 10px 6px 30px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '6px', fontSize: '11px', outline: 'none' }}
+                style={{ width: '100%', padding: '6px 10px 6px 30px', background: currentTheme.cardBg, color: '#f8fafc', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', fontSize: '11px', outline: 'none' }}
               />
             </div>
 
@@ -1395,8 +1550,8 @@ export default function SatelliteWorkspace() {
                     style={{ 
                       padding: '8px 10px', 
                       borderRadius: '6px', 
-                      background: isSelected ? 'rgba(30, 41, 59, 0.85)' : '#131620', 
-                      border: isSelected ? '1px solid #38bdf8' : (isTopPlan ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid #1e2433'),
+                      background: isSelected ? currentTheme.accentBg : currentTheme.cardBg, 
+                      border: isSelected ? `1px solid ${currentTheme.highlightBorder}` : (isTopPlan ? `1px solid ${currentTheme.accentBorder}` : `1px solid ${currentTheme.cardBorder}`),
                       cursor: 'pointer',
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -1406,11 +1561,11 @@ export default function SatelliteWorkspace() {
                   >
                     <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <span className="font-mono" style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#38bdf8' : '#e2e8f0' }}>
+                        <span className="font-mono" style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? currentTheme.accent : '#e2e8f0' }}>
                           #{sec.rank} {sec.id}
                         </span>
                         {isTopPlan && (
-                          <span style={{ fontSize: '9px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', padding: '1px 5px', borderRadius: '3px', fontWeight: '700' }}>
+                          <span style={{ fontSize: '9px', background: currentTheme.accentBg, border: `1px solid ${currentTheme.accentBorder}`, color: currentTheme.accent, padding: '1px 5px', borderRadius: '3px', fontWeight: '700' }}>
                             PLAN #{sec.plan_rank}
                           </span>
                         )}
@@ -1459,12 +1614,12 @@ export default function SatelliteWorkspace() {
             </div>
 
             {/* Summary card with real OSM exposure breakdown */}
-            <div style={{ background: '#151821', border: '1px solid #202534', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px' }}>
+            <div style={{ background: currentTheme.cardBg, border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', padding: '10px 12px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-mono" style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>{selectedSector}</span>
+                <span className="font-mono" style={{ fontSize: '13px', fontWeight: '700', color: currentTheme.accent }}>{selectedSector}</span>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   {activeSectorData?.plan_rank && (
-                    <span style={{ fontSize: '10px', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '1px 5px', borderRadius: '3px' }}>
+                    <span style={{ fontSize: '10px', color: currentTheme.accent, background: currentTheme.accentBg, border: `1px solid ${currentTheme.accentBorder}`, padding: '1px 5px', borderRadius: '3px' }}>
                       Priority Plan #{activeSectorData.plan_rank}
                     </span>
                   )}
@@ -1475,20 +1630,20 @@ export default function SatelliteWorkspace() {
               {/* Water Extents */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '8px', fontSize: '11px' }}>
                 <div>{current.has_permanent_baseline === false || (current.total_permanent_water_ha || 0) === 0 ? 'Surface Water' : 'Candidate Water'}: <strong style={{ color: '#f43f5e' }}>{activeSectorData?.candidate_water_ha || 0} ha</strong></div>
-                <div>Permanent Water: <strong style={{ color: '#38bdf8' }}>{activeSectorData?.permanent_water_ha || 0} ha</strong></div>
+                <div>Permanent Water: <strong style={{ color: currentTheme.accent }}>{activeSectorData?.permanent_water_ha || 0} ha</strong></div>
                 <div>Model Disagreement: <strong style={{ color: '#f59e0b' }}>{activeSectorData?.disagreement_ha || 0} ha</strong></div>
                 <div>Sector Extent: <strong style={{ color: '#94a3b8' }}>{activeSectorData?.valid_ha || maxSectorHa} ha</strong></div>
               </div>
 
               {/* OSM Infrastructure Exposure Details */}
-              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #1e2433' }}>
+              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${currentTheme.cardBorder}` }}>
                 <div style={{ fontSize: '10px', fontWeight: '600', color: '#f97316', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>CONTEXTUAL INFRASTRUCTURE EXPOSURE (OSM)</span>
                   <a 
                     href={`https://www.openstreetmap.org/#map=16/${current.metadata?.lat}/${current.metadata?.lon}`}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '9px' }}
+                    style={{ color: currentTheme.accent, textDecoration: 'none', fontSize: '9px' }}
                   >
                     View in OSM ↗
                   </a>
@@ -1510,7 +1665,7 @@ export default function SatelliteWorkspace() {
               </div>
 
               {/* Verification Rationale */}
-              <div style={{ marginTop: '8px', fontSize: '10px', color: '#94a3b8', borderTop: '1px solid #1e2433', paddingTop: '6px' }}>
+              <div style={{ marginTop: '8px', fontSize: '10px', color: '#94a3b8', borderTop: `1px solid ${currentTheme.cardBorder}`, paddingTop: '6px' }}>
                 <strong style={{ color: '#e2e8f0' }}>Inspection Rationale: </strong>
                 {activeSectorData?.inspection_rationale || 'Standard sector inspection.'}
               </div>
@@ -1524,7 +1679,7 @@ export default function SatelliteWorkspace() {
                   type="text" 
                   value={assignedCrew} 
                   onChange={(e) => setAssignedCrew(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
+                  style={{ width: '100%', padding: '7px 10px', background: currentTheme.cardBg, color: '#f8fafc', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '5px', fontSize: '12px' }}
                 />
               </div>
 
@@ -1533,7 +1688,7 @@ export default function SatelliteWorkspace() {
                 <select 
                   value={taskStatus} 
                   onChange={(e) => setTaskStatus(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
+                  style={{ width: '100%', padding: '7px 10px', background: currentTheme.cardBg, color: '#f8fafc', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '5px', fontSize: '12px' }}
                 >
                   <option value="assigned">assigned (Queued for dispatch)</option>
                   <option value="in_progress">in_progress (Field team en route)</option>
@@ -1553,7 +1708,7 @@ export default function SatelliteWorkspace() {
                   value={taskEvidence} 
                   onChange={(e) => setTaskEvidence(e.target.value)}
                   placeholder="e.g. Drone imagery #2016-08, high water mark photo"
-                  style={{ width: '100%', padding: '7px 10px', background: '#12151e', color: '#10b981', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
+                  style={{ width: '100%', padding: '7px 10px', background: currentTheme.cardBg, color: '#10b981', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '5px', fontSize: '12px' }}
                 />
               </div>
 
@@ -1563,7 +1718,7 @@ export default function SatelliteWorkspace() {
                   rows={2} 
                   value={taskNotes} 
                   onChange={(e) => setTaskNotes(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', background: '#12151e', color: '#f8fafc', border: '1px solid #202534', borderRadius: '5px', fontSize: '12px' }}
+                  style={{ width: '100%', padding: '7px 10px', background: currentTheme.cardBg, color: '#f8fafc', border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '5px', fontSize: '12px' }}
                 />
               </div>
 
