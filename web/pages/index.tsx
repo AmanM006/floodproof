@@ -421,10 +421,10 @@ export default function SatelliteWorkspace() {
   const footprintKm2 = current.geodesy?.footprint_km2 || 23.34;
 
   // Dynamic Plan Computation & Re-ranking based on Selected Strategy & Budget K
-  const maxCandHa = Math.max(...current.sectors.map(s => s.candidate_water_ha), 1.0);
-  const maxRoadM = Math.max(...current.sectors.map(s => s.road_overlap_m || 0), 1.0);
-  const maxBldHa = Math.max(...current.sectors.map(s => s.building_overlap_ha || 0), 1.0);
-  const maxDisHa = Math.max(...current.sectors.map(s => s.disagreement_ha || 0), 1.0);
+  const maxCandHa = Math.max(...current.sectors.map(s => s.candidate_water_ha), 0.001);
+  const maxRoadM = Math.max(...current.sectors.map(s => s.road_overlap_m || 0), 0.001);
+  const maxBldHa = Math.max(...current.sectors.map(s => s.building_overlap_ha || 0), 0.001);
+  const maxDisHa = Math.max(...current.sectors.map(s => s.disagreement_ha || 0), 0.001);
 
   // Compute dynamic scores for every sector
   const dynamicallyPlannedSectors = current.sectors.map(s => {
