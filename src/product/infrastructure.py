@@ -167,7 +167,18 @@ def analyze_infrastructure_exposure(
     scene_buildings_count = 0
     overlapping_buildings_count = 0
 
+    # Collect ways that are members of multipolygon relations to prevent rasterizing outer rings as solid polygons
+    relations = [e for e in elements if e.get('type') == 'relation']
+    relation_way_ids = set()
+    for rel in relations:
+        if rel.get('tags', {}).get('type') == 'multipolygon':
+            for mem in rel.get('members', []):
+                if mem.get('type') == 'way':
+                    relation_way_ids.add(mem.get('ref'))
+
     for way in ways:
+        if way.get('id') in relation_way_ids:
+            continue
         tags = way.get('tags', {})
         if 'building' not in tags:
             continue
@@ -201,6 +212,53 @@ def analyze_infrastructure_exposure(
                 overlapping_buildings_count += 1
                 overlapping_building_footprint_ha += (b_overlap_px * ha_per_px)
 
+    # 2b. Handle multipolygon relations for complex buildings with inner holes if present
+    relations = [e for e in elements if e.get('type') == 'relation']
+    ways_map = {w['id']: w for w in ways}
+    for rel in relations:
+        tags = rel.get('tags', {})
+        if tags.get('type') != 'multipolygon' or ('building' not in tags and 'landuse' not in tags):
+            continue
+        
+        outer_polys = []
+        inner_holes = []
+        for mem in rel.get('members', []):
+            if mem.get('type') != 'way':
+                continue
+            role = mem.get('role', 'outer')
+            w_obj = ways_map.get(mem.get('ref'))
+            if not w_obj:
+                continue
+            w_coords = [nodes[nid] for nid in w_obj.get('nodes', []) if nid in nodes]
+            if len(w_coords) < 3:
+                continue
+            pts = []
+            for lon, lat in w_coords:
+                r, c = lonlat_to_rc(lon, lat)
+                pts.append([int(round(c)), int(round(r))])
+            if pts:
+                if role == 'inner':
+                    inner_holes.append(np.array([pts], dtype=np.int32))
+                else:
+                    outer_polys.append(np.array([pts], dtype=np.int32))
+                    
+        if outer_polys:
+            rel_canvas = np.zeros((H, W), dtype=np.uint8)
+            for op in outer_polys:
+                cv2.fillPoly(rel_canvas, op, 1)
+            for ih in inner_holes:
+                cv2.fillPoly(rel_canvas, ih, 0)
+            
+            rel_px = int(np.sum(rel_canvas))
+            if rel_px > 0:
+                scene_buildings_count += 1
+                building_mask = np.maximum(building_mask, rel_canvas)
+                rel_overlap_px = int(np.sum((rel_canvas == 1) & cand_water_mask))
+                total_building_footprint_ha += (rel_px * ha_per_px)
+                if rel_overlap_px > 0:
+                    overlapping_buildings_count += 1
+                    overlapping_building_footprint_ha += (rel_overlap_px * ha_per_px)
+
     building_overlap_mask = (building_mask == 1) & cand_water_mask
 
     # 3. Identify Named Settlements / Places inside scene
@@ -211,7 +269,7 @@ def analyze_infrastructure_exposure(
         if 0 <= r < H and 0 <= c < W:
             s_row = int(r // 64)
             s_col = int(c // 64)
-            sec_id = f"SEC_{s_row * 8 + s_col + 1:02d}"
+            sec_id = f"SEC_{s_row * 8 + s_col + 1}"
             settlements.append({
                 'name': p.get('tags', {}).get('name', 'Settlement'),
                 'type': p.get('tags', {}).get('place', 'village'),
@@ -227,7 +285,7 @@ def analyze_infrastructure_exposure(
     for r_idx in range(8):
         for c_idx in range(8):
             sec_idx = r_idx * 8 + c_idx + 1
-            sec_id = f"SEC_{sec_idx:02d}"
+            sec_id = f"SEC_{sec_idx}"
             r_start, r_end = r_idx * 64, (r_idx + 1) * 64
             c_start, c_end = c_idx * 64, (c_idx + 1) * 64
             
@@ -260,7 +318,21 @@ def analyze_infrastructure_exposure(
                 'has_exposure': (s_road_overlap_m > 0 or s_bld_overlap_ha > 0)
             }
 
-    # 5. Render Transparent RGBA Infrastructure PNGs
+    # 5. Exact Mathematical Reconciliation of Scene Totals
+    # Using the unified scene rasters guarantees that scene totals and the sum of all 64 sectors
+    # reconcile exactly with zero double counting across sector boundaries.
+    px_linear_m = math.sqrt(pixel_area_m2)
+    total_road_px = int(np.sum(road_mask))
+    total_road_overlap_px = int(np.sum(road_overlap_mask))
+    scene_road_km = round(total_road_px * px_linear_m / 1000.0, 2)
+    scene_road_overlap_km = round(total_road_overlap_px * px_linear_m / 1000.0, 2)
+    
+    total_building_px = int(np.sum(building_mask))
+    total_bld_overlap_px = int(np.sum(building_overlap_mask))
+    scene_building_ha = round(total_building_px * ha_per_px, 2)
+    scene_building_overlap_ha = round(total_bld_overlap_px * ha_per_px, 2)
+
+    # 6. Render Transparent RGBA Infrastructure PNGs
     # Roads RGBA: Bright orange [1.0, 0.55, 0.0, 0.90] for mapped roads
     # Road overlap RGBA: Vibrant red-orange [1.0, 0.2, 0.0, 1.0]
     roads_rgba = np.zeros((H, W, 4), dtype=np.float32)
@@ -278,12 +350,12 @@ def analyze_infrastructure_exposure(
         'data_disclaimer': 'Contextual potential exposure based on mapped OSM features. Absence of mapped features does not indicate absence of infrastructure.',
         'scene_summary': {
             'total_roads_count': scene_roads_count,
-            'total_road_km': round(total_road_length_m / 1000.0, 2),
-            'overlapping_road_km': round(overlapping_road_length_m / 1000.0, 2),
+            'total_road_km': scene_road_km,
+            'overlapping_road_km': scene_road_overlap_km,
             'total_buildings_count': scene_buildings_count,
             'overlapping_buildings_count': overlapping_buildings_count,
-            'total_building_footprint_ha': round(total_building_footprint_ha, 2),
-            'overlapping_building_footprint_ha': round(overlapping_building_footprint_ha, 2),
+            'total_building_footprint_ha': scene_building_ha,
+            'overlapping_building_footprint_ha': scene_building_overlap_ha,
             'settlements': settlements
         },
         'sector_infrastructure': sector_infra,

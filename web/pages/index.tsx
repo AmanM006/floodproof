@@ -57,6 +57,7 @@ interface Sector {
     disagreement_component?: number;
   };
   inspection_rationale?: string;
+  threshold_water_ha?: number;
 }
 
 interface Scene {
@@ -396,20 +397,97 @@ export default function SatelliteWorkspace() {
 
   const current = scenes[selectedKey];
   const meta = current.metadata;
-  const activeSectorData = current.sectors.find((s) => s.id === selectedSector);
+  const rawActiveSector = current.sectors.find((s) => s.id === selectedSector);
   const activeSectorTask = tasks.find((t) => t.chip_id === selectedKey && t.sector_id === selectedSector);
 
   // Sector row and column calculation
-  const secRow = activeSectorData ? Math.floor(activeSectorData.r / 64) : 0;
-  const secCol = activeSectorData ? Math.floor(activeSectorData.c / 64) : 0;
+  const secRow = rawActiveSector ? Math.floor(rawActiveSector.r / 64) : 0;
+  const secCol = rawActiveSector ? Math.floor(rawActiveSector.c / 64) : 0;
 
   // Dynamic geodetic values from scene
   const pixelAreaM2 = current.geodesy?.pixel_area_m2 || 89.05;
   const maxSectorHa = current.geodesy?.max_sector_ha || 36.47;
   const footprintKm2 = current.geodesy?.footprint_km2 || 23.34;
 
+  // Dynamic Plan Computation & Re-ranking based on Selected Strategy & Budget K
+  const maxCandHa = Math.max(...current.sectors.map(s => s.candidate_water_ha), 1.0);
+  const maxRoadM = Math.max(...current.sectors.map(s => s.road_overlap_m || 0), 1.0);
+  const maxBldHa = Math.max(...current.sectors.map(s => s.building_overlap_ha || 0), 1.0);
+  const maxDisHa = Math.max(...current.sectors.map(s => s.disagreement_ha || 0), 1.0);
+
+  // Compute dynamic scores for every sector
+  const dynamicallyPlannedSectors = current.sectors.map(s => {
+    let score = 0;
+    let rationale = "";
+    const normWater = s.candidate_water_ha / maxCandHa;
+    const normRoad = (s.road_overlap_m || 0) / maxRoadM;
+    const normBld = (s.building_overlap_ha || 0) / maxBldHa;
+    const normInfra = 0.5 * normRoad + 0.5 * normBld;
+    const normDis = (s.disagreement_ha || 0) / maxDisHa;
+
+    if (planObjective === 'infrastructure') {
+      score = (0.2 * normWater + 0.8 * normInfra) * 100.0;
+      rationale = `Infra Focus: ${(s.road_overlap_m || 0).toFixed(0)}m road, ${(s.building_overlap_ha || 0).toFixed(2)}ha building overlap; ${s.candidate_water_ha.toFixed(2)}ha water`;
+    } else if (planObjective === 'conflict') {
+      score = (0.1 * normWater + 0.9 * normDis) * 100.0;
+      rationale = `Disagreement Focus: ${(s.disagreement_ha || 0).toFixed(2)}ha model conflict; ${s.candidate_water_ha.toFixed(2)}ha water`;
+    } else if (planObjective === 'candidate_water') {
+      score = normWater * 100.0;
+      rationale = `Area Focus (XGBoost): ${s.candidate_water_ha.toFixed(2)}ha candidate water extent`;
+    } else if (planObjective === 'fixed_threshold') {
+      const maxThresh = Math.max(...current.sectors.map(sec => sec.threshold_water_ha || 0), 1.0);
+      score = ((s.threshold_water_ha || 0) / maxThresh) * 100.0;
+      rationale = `Area Focus (Fixed Threshold): ${(s.threshold_water_ha || 0).toFixed(2)}ha threshold water extent`;
+    } else { // balanced
+      score = (0.50 * normWater + 0.35 * normInfra + 0.15 * normDis) * 100.0;
+      const reasons: string[] = [];
+      if (s.candidate_water_ha > 0) reasons.push(`${s.candidate_water_ha.toFixed(2)}ha water`);
+      if (s.settlements && s.settlements.length > 0) reasons.push(`Village ${s.settlements.join(', ')}`);
+      if ((s.road_overlap_m || 0) > 0) reasons.push(`${(s.road_overlap_m || 0).toFixed(0)}m road`);
+      if ((s.building_overlap_ha || 0) > 0) reasons.push(`${(s.building_overlap_ha || 0).toFixed(2)}ha bld`);
+      if (s.disagreement_ha > 2) reasons.push(`${s.disagreement_ha.toFixed(2)}ha conflict`);
+      rationale = reasons.join('; ') || 'Minimal water / infrastructure';
+    }
+
+    return {
+      ...s,
+      dynamic_score: Math.round(score * 10) / 10,
+      dynamic_rationale: rationale
+    };
+  });
+
+  // Sort by dynamic score descending and assign dynamic plan rank
+  const sortedPlanSectors = [...dynamicallyPlannedSectors].sort((a, b) => b.dynamic_score - a.dynamic_score);
+  const planRankMap: Record<string, { rank: number; score: number; rationale: string; inBudget: boolean }> = {};
+  sortedPlanSectors.forEach((s, idx) => {
+    const dynamicRank = idx + 1;
+    const inBudget = idx < planBudgetK;
+    s.plan_rank = dynamicRank;
+    s.priority_score = s.dynamic_score;
+    s.inspection_rationale = s.dynamic_rationale;
+    planRankMap[s.id] = {
+      rank: dynamicRank,
+      score: s.dynamic_score,
+      rationale: s.dynamic_rationale,
+      inBudget: inBudget
+    };
+  });
+
+  // Dynamic Baseline Comparison: compare active dynamic plan top K with Area-Only top K
+  const areaOnlyTopK = [...current.sectors].sort((a, b) => b.candidate_water_ha - a.candidate_water_ha).slice(0, planBudgetK);
+  const areaIds = new Set(areaOnlyTopK.map(s => s.id));
+  const planTopK = sortedPlanSectors.slice(0, planBudgetK);
+  const planIds = new Set(planTopK.map(s => s.id));
+  const commonCount = Array.from(planIds).filter(id => areaIds.has(id)).length;
+  const dynamicComparisonExplanation = planObjective === 'candidate_water'
+    ? `All ${planBudgetK} sectors match area-only sorting (Area Focus objective active).`
+    : `${commonCount} of ${planBudgetK} sectors match area-only sorting. The ${planObjective === 'infrastructure' ? 'infrastructure' : (planObjective === 'conflict' ? 'disagreement' : 'balanced')} plan prioritizes sectors with critical infrastructure exposure or model ambiguity.`;
+
+  // Dynamic active sector data using computed dynamic plan
+  const activeSectorData = dynamicallyPlannedSectors.find((s) => s.id === selectedSector);
+
   // Filtered queue with planning support
-  const filteredSectors = current.sectors
+  const filteredSectors = dynamicallyPlannedSectors
     .filter((sec) => {
       const matchesSearch = sec.id.toLowerCase().includes(searchQuery.toLowerCase());
       if (filterSeverity === 'infra') return matchesSearch && (sec.has_exposure || (sec.road_overlap_m || 0) > 0 || (sec.building_overlap_ha || 0) > 0);
@@ -419,21 +497,48 @@ export default function SatelliteWorkspace() {
       return matchesSearch;
     })
     .sort((a, b) => {
-      if (planObjective === 'infrastructure') {
-        const aOv = (a.road_overlap_m || 0) + (a.building_overlap_ha || 0) * 100;
-        const bOv = (b.road_overlap_m || 0) + (b.building_overlap_ha || 0) * 100;
-        return bOv - aOv;
-      }
-      if (planObjective === 'conflict') {
-        return b.disagreement_ha - a.disagreement_ha;
-      }
-      if (planObjective === 'balanced' && a.priority_score !== undefined && b.priority_score !== undefined) {
-        return b.priority_score - a.priority_score;
-      }
-      return b.candidate_water_ha - a.candidate_water_ha;
+      const rankA = planRankMap[a.id]?.rank ?? 99;
+      const rankB = planRankMap[b.id]?.rank ?? 99;
+      return rankA - rankB;
     });
 
   const isIndia = selectedKey.startsWith('India');
+
+  // Export Plan JSON handler
+  const handleExportPlan = () => {
+    const topPlanList = sortedPlanSectors.slice(0, planBudgetK).map(s => ({
+      plan_rank: planRankMap[s.id]?.rank,
+      sector_id: s.id,
+      priority_score: planRankMap[s.id]?.score,
+      strategy_objective: planObjective,
+      candidate_water_ha: s.candidate_water_ha,
+      road_overlap_m: s.road_overlap_m || 0,
+      building_overlap_ha: s.building_overlap_ha || 0,
+      disagreement_ha: s.disagreement_ha,
+      settlements: s.settlements || [],
+      rationale: planRankMap[s.id]?.rationale
+    }));
+
+    const planPayload = {
+      export_time: new Date().toISOString(),
+      scene_id: selectedKey,
+      strategy_objective: planObjective,
+      budget_k: planBudgetK,
+      selected_count: topPlanList.length,
+      total_candidate_water_in_plan_ha: Math.round(topPlanList.reduce((acc, s) => acc + s.candidate_water_ha, 0) * 100) / 100,
+      total_road_overlap_in_plan_m: Math.round(topPlanList.reduce((acc, s) => acc + s.road_overlap_m, 0) * 10) / 10,
+      total_building_overlap_in_plan_ha: Math.round(topPlanList.reduce((acc, s) => acc + s.building_overlap_ha, 0) * 100) / 100,
+      top_sectors: topPlanList
+    };
+
+    const blob = new Blob([JSON.stringify(planPayload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inspection_plan_${selectedKey}_K${planBudgetK}_${planObjective}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div style={{ minHeight: '100vh', width: '100%', background: '#090a0d', color: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
@@ -917,20 +1022,27 @@ export default function SatelliteWorkspace() {
                   const secData = current.sectors.find((s) => s.id === secId);
                   const isSelected = selectedSector === secId;
 
+                  const secPlan = planRankMap[secId];
+                  const isInPlanBudget = secPlan?.inBudget;
+
                   return (
                     <div 
                       key={secId}
                       onClick={() => setSelectedSector(secId)}
-                      title={`${secId}: ${secData?.candidate_water_ha || 0} ha candidate water`}
+                      title={`${secId}: Rank #${secPlan?.rank || '-'} (Score: ${secPlan?.score || 0}) - ${secPlan?.rationale || ''}`}
                       style={{ 
                         border: isSelected 
                           ? '2.5px solid #38bdf8' 
-                          : (showAllSectors ? '1px solid rgba(255, 255, 255, 0.08)' : 'none'),
+                          : (isInPlanBudget 
+                              ? '1.5px solid rgba(56, 189, 248, 0.7)' 
+                              : (showAllSectors ? '1px solid rgba(255, 255, 255, 0.08)' : 'none')),
                         background: isSelected 
-                          ? 'rgba(56, 189, 248, 0.2)' 
-                          : (showAllSectors && secData && secData.candidate_water_ha > 15 
-                              ? 'rgba(225, 29, 72, 0.1)' 
-                              : 'transparent'),
+                          ? 'rgba(56, 189, 248, 0.25)' 
+                          : (isInPlanBudget 
+                              ? 'rgba(56, 189, 248, 0.12)' 
+                              : (showAllSectors && secData && secData.candidate_water_ha > 15 
+                                  ? 'rgba(225, 29, 72, 0.1)' 
+                                  : 'transparent')),
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'flex-start',
@@ -939,19 +1051,20 @@ export default function SatelliteWorkspace() {
                         transition: 'all 0.15s'
                       }}
                     >
-                      {(showAllSectors || isSelected) && (
+                      {(showAllSectors || isSelected || isInPlanBudget) && (
                         <span style={{ 
                           fontSize: '10px', 
                           fontWeight: '800', 
-                          color: '#000000', 
-                          background: isSelected ? '#38bdf8' : 'rgba(255, 255, 255, 0.85)',
+                          color: isInPlanBudget && !isSelected ? '#38bdf8' : '#000000', 
+                          background: isSelected ? '#38bdf8' : (isInPlanBudget ? '#111827' : 'rgba(255, 255, 255, 0.85)'),
+                          border: isInPlanBudget && !isSelected ? '1px solid #38bdf8' : 'none',
                           padding: '1px 4px',
                           borderRadius: '3px',
                           boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
                           fontFamily: 'JetBrains Mono',
                           lineHeight: 1
                         }}>
-                          {i + 1}
+                          {isInPlanBudget ? `#${secPlan.rank}` : i + 1}
                         </span>
                       )}
                     </div>
@@ -1155,7 +1268,8 @@ export default function SatelliteWorkspace() {
                 >
                   <option value="balanced">Balanced Multi-Criteria</option>
                   <option value="infrastructure">Infrastructure First</option>
-                  <option value="candidate_water">Candidate Water Extent</option>
+                  <option value="candidate_water">Candidate Water Extent (XGBoost)</option>
+                  <option value="fixed_threshold">Fixed-Threshold Area-Only</option>
                   <option value="conflict">Model Disagreement</option>
                 </select>
               </div>
@@ -1176,13 +1290,37 @@ export default function SatelliteWorkspace() {
               </div>
             </div>
 
+            {/* Export Dynamic Plan Action */}
+            <div style={{ marginBottom: '10px' }}>
+              <button
+                onClick={handleExportPlan}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  background: '#1a2234',
+                  border: '1px solid #2d3b55',
+                  borderRadius: '5px',
+                  color: '#38bdf8',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Download size={13} />
+                <span>Export Inspection Plan (K={planBudgetK}, {planObjective})</span>
+              </button>
+            </div>
+
             {/* Plan Baseline Comparison Alert */}
-            {current.inspection_plan?.summary?.comparison_with_area_baseline && (
-              <div style={{ background: '#10141f', border: '1px solid #1e293b', borderRadius: '4px', padding: '6px 8px', fontSize: '10px', color: '#94a3b8', marginBottom: '10px' }}>
-                <span style={{ color: '#38bdf8', fontWeight: '600' }}>Baseline Comparison: </span>
-                {current.inspection_plan.summary.comparison_with_area_baseline.explanation}
-              </div>
-            )}
+            <div style={{ background: '#10141f', border: '1px solid #1e293b', borderRadius: '4px', padding: '6px 8px', fontSize: '10px', color: '#94a3b8', marginBottom: '10px' }}>
+              <span style={{ color: '#38bdf8', fontWeight: '600' }}>Baseline Comparison: </span>
+              {dynamicComparisonExplanation}
+            </div>
 
             {/* Queue Filter Pills */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>

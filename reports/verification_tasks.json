@@ -94,5 +94,77 @@
         "notes": "[Simulated Demonstration] Ground verification workflow demonstration"
       }
     ]
+  },
+  {
+    "task_id": "TASK_India_591317_SEC_TEST_57528",
+    "chip_id": "India_591317",
+    "sector_id": "SEC_TEST_57528",
+    "version": 3,
+    "actor": "Satellite Analyst",
+    "assigned_team": "Testing Crew",
+    "status": "field_verified",
+    "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
+    "notes": "",
+    "simulated_demonstration": true,
+    "created_at": "2026-10-09T17:30:58.613Z",
+    "updated_at": "2026-10-09T17:31:12.180Z",
+    "history": [
+      {
+        "transition_time": "2026-10-09T17:30:58.613Z",
+        "actor": "Satellite Analyst",
+        "previous_status": "created",
+        "new_status": "assigned",
+        "evidence": "",
+        "notes": ""
+      },
+      {
+        "transition_time": "2026-10-09T17:31:09.631Z",
+        "actor": "Satellite Analyst",
+        "previous_status": "assigned",
+        "new_status": "in_progress",
+        "evidence": "",
+        "notes": ""
+      },
+      {
+        "transition_time": "2026-10-09T17:31:12.180Z",
+        "actor": "Satellite Analyst",
+        "previous_status": "in_progress",
+        "new_status": "field_verified",
+        "evidence": "High-water survey ref #HW-2016-SILGHAT-01",
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "task_id": "TASK_India_591317_SEC_CONCUR_74518",
+    "chip_id": "India_591317",
+    "sector_id": "SEC_CONCUR_74518",
+    "version": 2,
+    "actor": "Satellite Analyst",
+    "assigned_team": "Op1",
+    "status": "in_progress",
+    "evidence": "",
+    "notes": "",
+    "simulated_demonstration": true,
+    "created_at": "2026-10-09T17:31:14.531Z",
+    "updated_at": "2026-10-09T17:31:16.914Z",
+    "history": [
+      {
+        "transition_time": "2026-10-09T17:31:14.531Z",
+        "actor": "Satellite Analyst",
+        "previous_status": "created",
+        "new_status": "assigned",
+        "evidence": "",
+        "notes": ""
+      },
+      {
+        "transition_time": "2026-10-09T17:31:16.914Z",
+        "actor": "Satellite Analyst",
+        "previous_status": "assigned",
+        "new_status": "in_progress",
+        "evidence": "",
+        "notes": ""
+      }
+    ]
   }
 ]

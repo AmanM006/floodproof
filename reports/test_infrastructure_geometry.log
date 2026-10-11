@@ -1,0 +1,20 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\aman\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\aman\Documents\aws-wemake\floodproof
+plugins: anyio-4.14.2, jaxtyping-0.3.11
+collecting ... collected 4 items
+
+tests/test_infrastructure_geometry.py::test_haversine_known_distances PASSED [ 25%]
+tests/test_infrastructure_geometry.py::test_sector_boundary_crossing_and_reconciliation PASSED [ 50%]
+tests/test_infrastructure_geometry.py::test_polygon_with_interior_ring_holes PASSED [ 75%]
+tests/test_infrastructure_geometry.py::test_scene_boundary_clipping PASSED [100%]
+
+=================================== PASSES ====================================
+=========================== short test summary info ===========================
+PASSED tests/test_infrastructure_geometry.py::test_haversine_known_distances
+PASSED tests/test_infrastructure_geometry.py::test_sector_boundary_crossing_and_reconciliation
+PASSED tests/test_infrastructure_geometry.py::test_polygon_with_interior_ring_holes
+PASSED tests/test_infrastructure_geometry.py::test_scene_boundary_clipping
+============================== 4 passed in 0.53s ==============================
+

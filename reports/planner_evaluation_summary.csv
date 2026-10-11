@@ -1,0 +1,37 @@
+split,budget_k,strategy,chips_evaluated,mean_annotated_water_captured_pct,pooled_annotated_water_captured_pct,pooled_annotated_water_captured_ha,mean_road_ov_captured_pct,pooled_road_ov_captured_pct,mean_bld_ov_captured_pct,pooled_bld_ov_captured_pct,mean_disagree_captured_pct,pooled_disagree_captured_pct
+India Diagnostic (India_900498 quarantined),5,Fixed-Threshold Area-Only (Baseline),1,15.26,15.26,168.21,0.0,0.0,0.0,0.0,10.25,10.25
+India Diagnostic (India_900498 quarantined),5,Planner Infra-First (Targeted),1,13.22,13.22,145.71,0.0,0.0,0.0,0.0,10.25,10.25
+India Diagnostic (India_900498 quarantined),5,XGBoost Area-Only (Baseline),1,13.22,13.22,145.71,0.0,0.0,0.0,0.0,10.25,10.25
+India Diagnostic (India_900498 quarantined),5,Planner Balanced (Multi-Criteria),1,12.68,12.68,139.82,0.0,0.0,0.0,0.0,11.41,11.41
+India Diagnostic (India_900498 quarantined),5,Planner Conflict-First (Active Learning),1,10.67,10.67,117.59,0.0,0.0,0.0,0.0,14.69,14.69
+India Diagnostic (India_900498 quarantined),5,Random Selection (Analytic Expected),1,7.81,7.81,86.13,0.0,0.0,0.0,0.0,7.81,7.81
+India Diagnostic (India_900498 quarantined),10,Fixed-Threshold Area-Only (Baseline),1,29.77,29.77,328.24,0.0,0.0,0.0,0.0,21.37,21.37
+India Diagnostic (India_900498 quarantined),10,Planner Balanced (Multi-Criteria),1,23.52,23.52,259.3,0.0,0.0,0.0,0.0,21.24,21.24
+India Diagnostic (India_900498 quarantined),10,Planner Infra-First (Targeted),1,23.52,23.52,259.3,0.0,0.0,0.0,0.0,21.24,21.24
+India Diagnostic (India_900498 quarantined),10,XGBoost Area-Only (Baseline),1,23.52,23.52,259.3,0.0,0.0,0.0,0.0,21.24,21.24
+India Diagnostic (India_900498 quarantined),10,Planner Conflict-First (Active Learning),1,23.18,23.18,255.55,0.0,0.0,0.0,0.0,27.86,27.86
+India Diagnostic (India_900498 quarantined),10,Random Selection (Analytic Expected),1,15.62,15.62,172.26,0.0,0.0,0.0,0.0,15.62,15.63
+India Diagnostic (India_900498 quarantined),15,Fixed-Threshold Area-Only (Baseline),1,42.14,42.14,464.62,0.0,0.0,0.0,0.0,34.44,34.44
+India Diagnostic (India_900498 quarantined),15,Planner Conflict-First (Active Learning),1,33.51,33.51,369.42,0.0,0.0,0.0,0.0,39.72,39.72
+India Diagnostic (India_900498 quarantined),15,Planner Balanced (Multi-Criteria),1,32.59,32.59,359.29,0.0,0.0,0.0,0.0,31.46,31.46
+India Diagnostic (India_900498 quarantined),15,Planner Infra-First (Targeted),1,32.43,32.43,357.5,0.0,0.0,0.0,0.0,30.12,30.12
+India Diagnostic (India_900498 quarantined),15,XGBoost Area-Only (Baseline),1,32.43,32.43,357.5,0.0,0.0,0.0,0.0,30.12,30.12
+India Diagnostic (India_900498 quarantined),15,Random Selection (Analytic Expected),1,23.44,23.44,258.4,0.0,0.0,0.0,0.0,23.44,23.44
+"India Test (Primary, excl. India_900498)",5,Fixed-Threshold Area-Only (Baseline),17,25.04,18.12,1080.06,0.0,0.0,0.0,0.0,21.34,15.7
+"India Test (Primary, excl. India_900498)",5,XGBoost Area-Only (Baseline),17,27.48,17.62,1050.22,0.0,0.0,0.0,0.0,27.28,21.08
+"India Test (Primary, excl. India_900498)",5,Planner Infra-First (Targeted),17,27.35,17.24,1027.44,4.07,69.25,3.57,60.71,26.87,20.59
+"India Test (Primary, excl. India_900498)",5,Planner Balanced (Multi-Criteria),17,26.41,15.48,922.61,0.0,0.0,0.0,0.0,28.7,23.35
+"India Test (Primary, excl. India_900498)",5,Planner Conflict-First (Active Learning),17,26.0,13.71,817.23,0.0,0.0,0.0,0.0,29.82,24.95
+"India Test (Primary, excl. India_900498)",5,Random Selection (Analytic Expected),17,7.81,7.81,465.72,0.46,7.81,0.46,7.82,7.81,7.81
+"India Test (Primary, excl. India_900498)",10,Fixed-Threshold Area-Only (Baseline),17,42.17,34.54,2058.9,0.0,0.0,0.0,0.0,36.8,28.56
+"India Test (Primary, excl. India_900498)",10,XGBoost Area-Only (Baseline),17,42.58,31.14,1856.01,0.0,0.0,0.0,0.0,44.47,37.39
+"India Test (Primary, excl. India_900498)",10,Planner Infra-First (Targeted),17,42.32,30.36,1809.99,4.07,69.25,5.04,85.71,44.02,36.86
+"India Test (Primary, excl. India_900498)",10,Planner Balanced (Multi-Criteria),17,42.15,29.89,1781.5,4.07,69.25,3.57,60.71,45.53,38.8
+"India Test (Primary, excl. India_900498)",10,Planner Conflict-First (Active Learning),17,40.86,26.0,1549.67,0.0,0.0,0.42,7.14,47.35,41.36
+"India Test (Primary, excl. India_900498)",10,Random Selection (Analytic Expected),17,15.62,15.62,931.43,0.92,15.62,0.92,15.64,15.62,15.62
+"India Test (Primary, excl. India_900498)",15,Fixed-Threshold Area-Only (Baseline),17,53.36,48.94,2917.33,0.0,0.0,0.0,0.0,49.7,41.3
+"India Test (Primary, excl. India_900498)",15,Planner Balanced (Multi-Criteria),17,51.81,41.13,2451.69,4.07,69.25,3.99,67.86,58.05,51.34
+"India Test (Primary, excl. India_900498)",15,XGBoost Area-Only (Baseline),17,51.51,41.07,2448.26,3.39,57.71,2.1,35.71,57.29,50.49
+"India Test (Primary, excl. India_900498)",15,Planner Infra-First (Targeted),17,51.25,40.32,2403.25,4.98,84.62,5.46,92.86,56.91,50.03
+"India Test (Primary, excl. India_900498)",15,Planner Conflict-First (Active Learning),17,51.72,38.81,2313.74,0.23,3.83,0.42,7.14,59.86,54.08
+"India Test (Primary, excl. India_900498)",15,Random Selection (Analytic Expected),17,23.44,23.44,1397.15,1.38,23.44,1.38,23.43,23.44,23.44
