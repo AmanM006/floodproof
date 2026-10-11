@@ -53,7 +53,7 @@ However, turning satellite radar observations into actionable disaster managemen
 │  ┌─────────────────────────▼────────────────────────┐  │
 │  │ Python Geospatial Processing (execFile)          │  │
 │  │ - Preprocessed SAR backscatter in dB             │  │
-│  │ - 3x3 Spatial Box Mean & Variance Features       │  │
+│  │ - 3x3 Local Mean & Std-Deviation Features        │  │
 │  │ - JRC Permanent Water Baseline Filtering         │  │
 │  │ - OpenStreetMap Geometry & Hole Subtraction      │  │
 │  │ - Haversine Geodetic Metric Calculations         │  │
@@ -65,8 +65,9 @@ However, turning satellite radar observations into actionable disaster managemen
 │  Amazon Simple Storage Service (Amazon S3)             │
 │  Bucket: floodproof-verification-artifacts-...         │
 │  - Object: tasks/verification_tasks.json               │
-│  - Remote recovery on application startup             │
-│  - Client-side export for GeoJSON / CSV plans          │
+│  - S3 persists task state and transition history       │
+│  - Task API recovers if local storage missing/corrupt  │
+│  (Inspection plans downloaded client-side as JSON)     │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -90,7 +91,7 @@ However, turning satellite radar observations into actionable disaster managemen
 ## ☁️ AWS Cloud Implementation
 
 - **Amazon EC2:** Hosted on an Amazon EC2 instance running Ubuntu 24.04 LTS in `us-east-1` behind Nginx. Internal sector task state queries resolve in <50 ms on-host.
-- **Amazon S3:** Persists simulated verification task records to `s3://floodproof-verification-artifacts-699158992887/tasks/verification_tasks.json`. If local storage is absent, the API recovers state from this S3 object.
+- **Amazon S3:** S3 persists task state and transition history at `s3://floodproof-verification-artifacts-699158992887/tasks/verification_tasks.json`. The task API recovers from S3 when local task storage is missing or corrupted. Inspection plans are downloaded client-side as JSON.
 - **AWS Systems Manager (SSM):** Environment updates and software deployments are executed via SSM Run Command, avoiding the need for an open inbound SSH port (port 22).
 - **AWS IAM:** The EC2 host authenticates to Amazon S3 using an attached IAM instance profile (`floodproof-ec2-role`) without stored access keys in configuration files.
 
@@ -115,7 +116,7 @@ Evaluations were conducted across **17 primary historical India scenes** alongsi
 ### Core Operational Trade-off & Scope
 > **Qualified Demonstration Finding:** *On one historical Assam demonstration scene (`India_591317`), selecting 10 of 64 sectors under Infrastructure First captures approximately 69% of predicted mapped-road overlap and 86% of predicted mapped-building overlap.*
 
-- **Strongest Water Baseline:** `Fixed-Threshold Area-Only` captures the highest pooled annotated-water volume across all budgets ($34.54\%$ at $K=10$), demonstrating that FloodProof provides operators with an explicit, selectable trade-off between total water area and contextual infrastructure exposure.
+- **Strongest Water Baseline:** `Fixed-Threshold Area-Only` captures the highest pooled annotated-water area across all budgets ($34.54\%$ at $K=10$), demonstrating that FloodProof provides operators with an explicit, selectable trade-off between total water area and contextual infrastructure exposure.
 - **Demonstration Context:** Mapped OpenStreetMap infrastructure was benchmarked on one historical demonstration scene (`India_591317`). Overlaps are raster-derived estimates, not confirmed damage.
 - **Consistent Denominators:** Percentages are computed from consistent sector-derived denominators ($245.2\text{ m}$ road overlap, $0.28\text{ ha}$ building overlap) reconciling with scene totals within rounding tolerance.
 
