@@ -761,36 +761,8 @@ export default function SatelliteWorkspace() {
           </div>
         </div>
 
-        {/* Global Actions + Aesthetic Theme Switcher */}
+        {/* Global Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          
-          {/* Aesthetic Theme Quick Switcher Pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: currentTheme.cardBg, border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', padding: '3px 8px' }}>
-            <Palette size={13} color={currentTheme.accent} />
-            <span style={{ fontSize: '11px', color: currentTheme.subtext, fontWeight: '600' }}>Theme & Layout:</span>
-            <select 
-              value={dashboardTheme}
-              onChange={(e) => setDashboardTheme(e.target.value as ThemeKey)}
-              style={{ 
-                background: 'transparent', 
-                border: 'none', 
-                color: '#f8fafc', 
-                fontSize: '11px', 
-                fontWeight: '600', 
-                cursor: 'pointer',
-                outline: 'none',
-                padding: '2px 4px'
-              }}
-            >
-              <option value="tactical" style={{ background: '#0b0e14', color: '#fff' }}>1. Tactical Defense Ops (Split Workbench)</option>
-              <option value="apple_dark" style={{ background: '#16181f', color: '#fff' }}>2. Apple Slate Pro (Cinematic Wide-Angle)</option>
-              <option value="cyber_sentinel" style={{ background: '#040b11', color: '#fff' }}>3. Cyber Sentinel Neon (3-Col Command HUD)</option>
-              <option value="swiss_minimal" style={{ background: '#000000', color: '#fff' }}>4. Swiss Studio Neutral (50/50 Architecture Grid)</option>
-              <option value="nasa_glass" style={{ background: '#0a1226', color: '#fff' }}>5. NASA Earth Aero (High-Density Mission Dock)</option>
-            </select>
-          </div>
-
-          <div style={{ height: '16px', width: '1px', background: currentTheme.headerBorder }}></div>
 
           <button 
             onClick={() => setShowUploadModal(true)}
