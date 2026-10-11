@@ -490,9 +490,18 @@ export default function SatelliteWorkspace() {
   const planTopK = sortedPlanSectors.slice(0, planBudgetK);
   const planIds = new Set(planTopK.map(s => s.id));
   const commonCount = Array.from(planIds).filter(id => areaIds.has(id)).length;
+
+  // Compute exact infrastructure coverage percentages in top K
+  const totalSceneRoadM = current.sectors.reduce((acc, s) => acc + (s.road_overlap_m || 0), 0);
+  const totalSceneBldgHa = current.sectors.reduce((acc, s) => acc + (s.building_overlap_ha || 0), 0);
+  const planRoadM = planTopK.reduce((acc, s) => acc + (s.road_overlap_m || 0), 0);
+  const planBldgHa = planTopK.reduce((acc, s) => acc + (s.building_overlap_ha || 0), 0);
+  const roadCoveragePct = totalSceneRoadM > 0 ? Math.round((planRoadM / totalSceneRoadM) * 100) : 0;
+  const bldgCoveragePct = totalSceneBldgHa > 0 ? Math.round((planBldgHa / totalSceneBldgHa) * 100) : 0;
+
   const dynamicComparisonExplanation = planObjective === 'candidate_water'
-    ? `All ${planBudgetK} sectors match area-only sorting (Area Focus objective active).`
-    : `${commonCount} of ${planBudgetK} sectors match area-only sorting. The ${planObjective === 'infrastructure' ? 'infrastructure' : (planObjective === 'conflict' ? 'disagreement' : 'balanced')} plan prioritizes sectors with critical infrastructure exposure or model ambiguity.`;
+    ? `All ${planBudgetK} sectors match area-only sorting (Area Focus objective active). Covers ${roadCoveragePct}% road / ${bldgCoveragePct}% building overlap.`
+    : `${commonCount} of ${planBudgetK} sectors match area-only sorting. Captures approximately ${roadCoveragePct}% of mapped-road overlap and ${bldgCoveragePct}% of mapped-building overlap across the scene.`;
 
   // Dynamic active sector data using computed dynamic plan
   const activeSectorData = dynamicallyPlannedSectors.find((s) => s.id === selectedSector);
