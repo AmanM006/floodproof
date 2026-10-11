@@ -30,7 +30,11 @@ import {
   Move,
   Compass,
   Navigation,
-  Palette
+  Palette,
+  Columns,
+  Layout,
+  Activity,
+  Grid
 } from 'lucide-react';
 
 interface Sector {
@@ -546,10 +550,14 @@ export default function SatelliteWorkspace() {
     URL.revokeObjectURL(url);
   };
 
-  // Aesthetic Themes Config
+  // Aesthetic Themes & Structural Layouts Config
   const themeConfigs: Record<ThemeKey, {
     label: string;
     tag: string;
+    layoutMode: 'split_standard' | 'cinematic_wide' | 'hud_three_col' | 'executive_compact' | 'scientific_dock';
+    layoutLabel: string;
+    layoutColumns: string;
+    layoutDesc: string;
     headerBg: string;
     headerBorder: string;
     canvasBg: string;
@@ -569,6 +577,10 @@ export default function SatelliteWorkspace() {
     tactical: {
       label: '1. Tactical Defense Ops',
       tag: 'Palantir / Foundry Dark',
+      layoutMode: 'split_standard',
+      layoutLabel: 'Standard 2-Pane Split (Canvas + Priority Queue)',
+      layoutColumns: '1fr 470px',
+      layoutDesc: 'Classic split-screen operator desk: large central interactive radar display flanked by full-height telemetry prioritization cards.',
       headerBg: '#0b0e14',
       headerBorder: '#1c2436',
       canvasBg: '#05070a',
@@ -587,15 +599,19 @@ export default function SatelliteWorkspace() {
     },
     apple_dark: {
       label: '2. Apple Slate Pro',
-      tag: 'Cupertino Pro Charcoal',
+      tag: 'Cupertino Studio Floating',
+      layoutMode: 'cinematic_wide',
+      layoutLabel: 'Cinematic Wide-Angle Canvas + Floating Studio Cards',
+      layoutColumns: '1fr 400px',
+      layoutDesc: 'Generous wide-angle radar canvas with floating frosted-glass inspect cards, giving the satellite scene maximum breathing room.',
       headerBg: '#16181f',
       headerBorder: '#272a36',
       canvasBg: '#0f1117',
       canvasBorder: '#242735',
       canvasShadow: '0 12px 40px rgba(0,0,0,0.6)',
-      sidebarBg: '#181a24',
-      cardBg: '#202330',
-      cardBorder: '#2e3245',
+      sidebarBg: '#14161f',
+      cardBg: '#1c1f2b',
+      cardBorder: '#292d3e',
       accent: '#818cf8',
       accentBg: 'rgba(129, 140, 248, 0.14)',
       accentBorder: 'rgba(129, 140, 248, 0.4)',
@@ -606,7 +622,11 @@ export default function SatelliteWorkspace() {
     },
     cyber_sentinel: {
       label: '3. Cyber Sentinel Neon',
-      tag: 'Futuristic Radar & HUD',
+      tag: 'Command Center 3-Column HUD',
+      layoutMode: 'hud_three_col',
+      layoutLabel: '3-Column Tactical HUD (Queue | Canvas | Sector Inspector)',
+      layoutColumns: '320px 1fr 340px',
+      layoutDesc: 'Full 3-column military radar station: left queue deck, centered widescreen satellite target, and right infrastructure inspector.',
       headerBg: '#040b11',
       headerBorder: '#0e3a4f',
       canvasBg: '#020508',
@@ -625,7 +645,11 @@ export default function SatelliteWorkspace() {
     },
     swiss_minimal: {
       label: '4. Swiss Studio Neutral',
-      tag: 'Linear / Vercel Minimalist',
+      tag: 'Linear Executive Focus',
+      layoutMode: 'executive_compact',
+      layoutLabel: 'Clean Grid Partition (50 / 50 Balanced Workbench)',
+      layoutColumns: '1.1fr 1fr',
+      layoutDesc: 'Perfect Swiss architectural balance: 50/50 proportioned canvas and tabular intelligence sheet for deep operational reading.',
       headerBg: '#000000',
       headerBorder: '#262626',
       canvasBg: '#000000',
@@ -644,7 +668,11 @@ export default function SatelliteWorkspace() {
     },
     nasa_glass: {
       label: '5. NASA Earth Aero',
-      tag: 'Aerospace Glassmorphic',
+      tag: 'Aerospace Mission Dock',
+      layoutMode: 'scientific_dock',
+      layoutLabel: 'Mission Science Deck (Widescreen + Right Telemetry Dock)',
+      layoutColumns: '1fr 500px',
+      layoutDesc: 'Aerospace mission telemetry dock: deep scientific canvas with high-density side mission console and live OSM exposure readouts.',
       headerBg: '#0a1226',
       headerBorder: '#1e335e',
       canvasBg: '#060b18',
@@ -739,7 +767,7 @@ export default function SatelliteWorkspace() {
           {/* Aesthetic Theme Quick Switcher Pill */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: currentTheme.cardBg, border: `1px solid ${currentTheme.cardBorder}`, borderRadius: '6px', padding: '3px 8px' }}>
             <Palette size={13} color={currentTheme.accent} />
-            <span style={{ fontSize: '11px', color: currentTheme.subtext, fontWeight: '600' }}>Theme:</span>
+            <span style={{ fontSize: '11px', color: currentTheme.subtext, fontWeight: '600' }}>Theme & Layout:</span>
             <select 
               value={dashboardTheme}
               onChange={(e) => setDashboardTheme(e.target.value as ThemeKey)}
@@ -754,11 +782,11 @@ export default function SatelliteWorkspace() {
                 padding: '2px 4px'
               }}
             >
-              <option value="tactical" style={{ background: '#0b0e14', color: '#fff' }}>1. Tactical Defense Ops</option>
-              <option value="apple_dark" style={{ background: '#16181f', color: '#fff' }}>2. Apple Slate Pro</option>
-              <option value="cyber_sentinel" style={{ background: '#040b11', color: '#fff' }}>3. Cyber Sentinel Neon</option>
-              <option value="swiss_minimal" style={{ background: '#000000', color: '#fff' }}>4. Swiss Studio Neutral</option>
-              <option value="nasa_glass" style={{ background: '#0a1226', color: '#fff' }}>5. NASA Earth Aero</option>
+              <option value="tactical" style={{ background: '#0b0e14', color: '#fff' }}>1. Tactical Defense Ops (Split Workbench)</option>
+              <option value="apple_dark" style={{ background: '#16181f', color: '#fff' }}>2. Apple Slate Pro (Cinematic Wide-Angle)</option>
+              <option value="cyber_sentinel" style={{ background: '#040b11', color: '#fff' }}>3. Cyber Sentinel Neon (3-Col Command HUD)</option>
+              <option value="swiss_minimal" style={{ background: '#000000', color: '#fff' }}>4. Swiss Studio Neutral (50/50 Architecture Grid)</option>
+              <option value="nasa_glass" style={{ background: '#0a1226', color: '#fff' }}>5. NASA Earth Aero (High-Density Mission Dock)</option>
             </select>
           </div>
 
@@ -812,7 +840,7 @@ export default function SatelliteWorkspace() {
       </header>
 
       {/* ================= 2. MAIN WORKSPACE ================= */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 460px', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: currentTheme.layoutColumns, height: 'calc(100vh - 56px)', overflow: 'hidden', transition: 'grid-template-columns 0.3s ease' }}>
         
         {/* ================= LEFT: GEOGRAPHIC CANVAS & CONTROLS ================= */}
         <div 
@@ -1376,6 +1404,19 @@ export default function SatelliteWorkspace() {
         {/* ================= RIGHT 1/3: FOCUSED INSPECTION & TASK PANEL ================= */}
         <div style={{ background: currentTheme.sidebarBg, display: 'flex', flexDirection: 'column', overflowY: 'auto', transition: 'background 0.25s ease' }}>
           
+          {/* Active Layout Architecture Banner */}
+          <div style={{ padding: '8px 20px', background: currentTheme.cardBg, borderBottom: `1px solid ${currentTheme.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Layout size={12} color={currentTheme.accent} />
+              <span style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: currentTheme.accent }}>
+                Layout: {currentTheme.layoutLabel}
+              </span>
+            </div>
+            <span style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
+              {currentTheme.layoutColumns}
+            </span>
+          </div>
+
           {/* Section 1: Scene Overview */}
           <div style={{ padding: '16px 20px', borderBottom: `1px solid ${currentTheme.cardBorder}` }}>
             <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
