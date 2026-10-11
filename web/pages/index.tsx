@@ -202,7 +202,7 @@ export default function SatelliteWorkspace() {
 
   // Aesthetic Dashboard Theme selector
   type ThemeKey = 'tactical' | 'apple_dark' | 'cyber_sentinel' | 'swiss_minimal' | 'nasa_glass';
-  const [dashboardTheme, setDashboardTheme] = useState<ThemeKey>('tactical');
+  const [dashboardTheme, setDashboardTheme] = useState<ThemeKey>('swiss_minimal');
 
   // Viewport container sizing
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -647,9 +647,9 @@ export default function SatelliteWorkspace() {
       label: '4. Swiss Studio Neutral',
       tag: 'Linear Executive Focus',
       layoutMode: 'executive_compact',
-      layoutLabel: 'Clean Grid Partition (50 / 50 Balanced Workbench)',
-      layoutColumns: '1.1fr 1fr',
-      layoutDesc: 'Perfect Swiss architectural balance: 50/50 proportioned canvas and tabular intelligence sheet for deep operational reading.',
+      layoutLabel: 'Clean Swiss Workbench (Full Canvas + Slim Inspection Panel)',
+      layoutColumns: '1fr 420px',
+      layoutDesc: 'Pure monochrome OLED black and white Swiss aesthetic with expanded radar canvas and compact right inspection panel.',
       headerBg: '#000000',
       headerBorder: '#262626',
       canvasBg: '#000000',
